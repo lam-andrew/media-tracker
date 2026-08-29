@@ -116,7 +116,24 @@ document routine coding choices — that creates noise, not signal.
 
 ## Current status
 
-Initial scaffold complete: Next.js + Tailwind app, Literary-light design tokens, the provider
-abstraction seeded, and full documentation + CI/CD standards in place. Next up (see `docs/BUILD.md`
-build order): Supabase schema + client (M2), the provider engine with Open Library + TMDB and the
-`/api/search` route (M3), then search + add, the library view, and item tracking.
+**Done and on `main` (CI green):**
+
+- Scaffold + full docs/CI-CD standards (this file, README, CONTRIBUTING, C4 diagrams, ADRs 0001–0007).
+- Design system: **Literary light** + a **Warm dark** twin, with a persisted sun/moon theme toggle
+  (`components/theme-toggle.tsx`; no-flash script in `app/layout.tsx`). Tokens in `app/globals.css`.
+- Generic media engine: `supabase/schema.sql` (`media_items` + `user_items`), lazy Supabase admin
+  client, `lib/media-config.ts`, providers for Open Library / TMDB (movie+tv) / RAWG behind one
+  interface (`lib/providers/`), and `GET /api/search?type=&q=`. Mapper unit tests pass.
+- Search UI (`/search`): media-type selector, debounced live search, results in three
+  **user-selectable, persisted** layouts (grid / rows / cards). `addToLibrary` server action is
+  code-complete. Verified live: book search returns real Open Library results.
+
+**Blocked on the user (🧑):** create a Supabase project + get TMDB and RAWG keys, fill `.env.local`
+(see `.env.example`), and run `supabase/schema.sql` in Supabase. That turns on: Add-to-library
+saving, and movie/TV/game search.
+
+**Next build steps (after keys):** the **library page** (home — saved items as a poster grid,
+type filter) and **item tracking** (status / half-star rating / progress / notes) — `docs/BUILD.md`
+M5–M7. Then accounts/auth, imports, recommendations, deploy (Vercel).
+
+> Dev server: `npm run dev -- -p 3100` (port 3000 is a different project). No public deploy yet.
