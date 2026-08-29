@@ -1,0 +1,49 @@
+# Pre-commit quality gates. Fast checks (format, lint, types, secret/large-file guards) run on
+# every commit; the test suite runs on push. Install once with:
+#
+#   pip install pre-commit && pre-commit install --install-hooks
+#
+# The local hooks call npm scripts, so run `npm install` first — see CONTRIBUTING.md.
+minimum_pre_commit_version: "3.5.0"
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier (format check)
+        entry: npm run format:check
+        language: system
+        pass_filenames: false
+
+      - id: eslint
+        name: eslint
+        entry: npm run lint
+        language: system
+        pass_filenames: false
+
+      - id: typecheck
+        name: tsc type check
+        entry: npm run typecheck
+        language: system
+        pass_filenames: false
+
+      # Full test suite — heavier, so gated on push rather than every commit.
+      - id: tests
+        name: vitest
+        entry: npm run test
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

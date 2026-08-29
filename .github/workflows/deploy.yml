@@ -1,0 +1,23 @@
+name: Deploy (placeholder)
+
+# Deployment is handled by Vercel's native Git integration, NOT by GitHub Actions:
+# preview deploys on pull requests, production deploys on merge to main. See
+# docs/adr/0006-deployment-via-vercel.md. GitHub Actions handles CI (quality + security) only.
+# This workflow is a documented, manual-only placeholder.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy (handled by Vercel)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain deployment model
+        run: |
+          echo "Deployment is handled by Vercel's native Git integration."
+          echo "Preview deploys run on pull requests; production on merge to main."
+          echo "GitHub Actions handles CI (quality + security) only."
+          echo "See docs/adr/0006-deployment-via-vercel.md."

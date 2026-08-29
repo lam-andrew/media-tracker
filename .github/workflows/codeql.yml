@@ -1,0 +1,36 @@
+name: CodeQL
+
+# Static application security testing (SAST) for TypeScript/JavaScript. Runs on push/PR to
+# main and weekly so newly published queries catch existing code.
+#
+# Note: code scanning (SARIF results) is available on public repositories and on private
+# repositories with GitHub Advanced Security. On a private repo without GHAS the analysis
+# runs but the results upload is skipped (see continue-on-error below).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 3 * * 1" # Mondays 03:23 UTC
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        continue-on-error: true
+        with:
+          category: "/language:javascript-typescript"

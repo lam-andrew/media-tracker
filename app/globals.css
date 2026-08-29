@@ -1,26 +1,40 @@
 @import "tailwindcss";
 
+/*
+ * Design system: "Literary light" — warm cream paper canvas, ink text, serif
+ * display type, antique-gold stars, classic burgundy accent. See docs/BUILD.md §12.
+ * Light is the primary brand identity; a warm-dark variant may come later.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5efe3; /* warm cream "paper" canvas */
+  --surface: #fcfaf3; /* cards */
+  --surface-2: #efe8da; /* hover / raised */
+  --border: #e2d9c7; /* hairline */
+  --border-strong: #d6cab2;
+  --ink: #2e2a24; /* primary text */
+  --muted: #7a7263; /* secondary text */
+  --accent: #7a2e3a; /* deep burgundy */
+  --accent-strong: #8e3a47;
+  --star: #b8863b; /* antique gold */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-star: var(--star);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
 }
