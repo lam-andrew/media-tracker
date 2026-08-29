@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * App frame: a slim top nav with the serif wordmark and a search entry, wrapping
@@ -16,14 +17,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             {BRAND.name}
           </Link>
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted transition-colors hover:border-border-strong hover:text-ink"
-          >
-            <SearchIcon />
-            <span className="hidden sm:inline">Search</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/search"
+              aria-label="Search"
+              className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted transition-colors hover:border-border-strong hover:text-ink"
+            >
+              <SearchIcon />
+              <span className="hidden sm:inline">Search</span>
+            </Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">

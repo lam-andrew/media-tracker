@@ -16,6 +16,26 @@
   --accent: #7a2e3a; /* deep burgundy */
   --accent-strong: #8e3a47;
   --star: #b8863b; /* antique gold */
+  color-scheme: light;
+}
+
+/*
+ * "Warm dark" — the reading-nook-after-dark twin. Espresso charcoal, cream text,
+ * lightened burgundy accent, brighter gold stars. Applied via data-theme="dark"
+ * (set by the pre-hydration script in the root layout and the theme toggle).
+ */
+:root[data-theme="dark"] {
+  --bg: #1a1512; /* espresso charcoal canvas */
+  --surface: #241d18; /* cards */
+  --surface-2: #2f261e; /* hover / raised */
+  --border: #362c23; /* hairline */
+  --border-strong: #473a2d;
+  --ink: #efe4d6; /* cream text */
+  --muted: #a99b87; /* warm gray */
+  --accent: #c67a84; /* lightened burgundy, legible on espresso */
+  --accent-strong: #d89aa2;
+  --star: #d3a24e; /* gold */
+  color-scheme: dark;
 }
 
 @theme inline {
