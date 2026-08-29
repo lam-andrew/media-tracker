@@ -26,3 +26,4 @@ an architecturally significant decision, its context, and its consequences.
 | [0004](0004-single-user-mvp.md) | Single-user MVP with a multi-user-ready schema | Accepted |
 | [0005](0005-quality-gates-and-security-scanning.md) | CI quality gates and security scanning | Accepted |
 | [0006](0006-deployment-via-vercel.md) | Deployment via Vercel's Git integration | Accepted |
+| [0007](0007-metadata-providers.md) | Metadata providers: Open Library, TMDB, RAWG | Accepted |
