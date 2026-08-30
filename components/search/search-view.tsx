@@ -25,9 +25,15 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
 
 type SearchStatus = "idle" | "loading" | "done" | "error";
 
-export function SearchView() {
-  const [type, setType] = useState<string>("book");
-  const [query, setQuery] = useState("");
+export function SearchView({
+  initialType = "book",
+  initialQuery = "",
+}: {
+  initialType?: string;
+  initialQuery?: string;
+}) {
+  const [type, setType] = useState<string>(initialType);
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<NormalizedItem[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [error, setError] = useState<string | null>(null);

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { BRAND } from "@/lib/brand";
-import { AppShell } from "@/components/app-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -35,7 +35,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <AppShell>{children}</AppShell>
+        <DashboardShell>{children}</DashboardShell>
       </body>
     </html>
   );
