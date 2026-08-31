@@ -2,8 +2,10 @@
 --
 -- `type` is TEXT (not an enum) and type-specific fields live in JSONB, so adding a
 -- new media type needs no migration. See docs/adr/0002-generic-media-engine.md.
--- RLS is intentionally left OFF for the single-user MVP; enable it when auth lands.
--- See docs/adr/0004-single-user-mvp.md.
+-- Row Level Security is ENABLED with no policies (deny-by-default): the public anon
+-- key can't touch these tables, while Marqd's server uses the service_role key, which
+-- bypasses RLS. Per-user policies come with real auth. See
+-- docs/adr/0004-single-user-mvp.md and docs/adr/0008-enable-rls-deny-by-default.md.
 
 create extension if not exists "pgcrypto";
 
@@ -40,3 +42,8 @@ create table if not exists user_items (
 
 create index if not exists user_items_user_status_idx on user_items (user_id, status);
 create index if not exists media_items_type_idx on media_items (type);
+
+-- Deny-by-default security: RLS on, no policies. The service_role key (used only
+-- server-side) bypasses RLS; the public anon key is locked out. See ADR 0008.
+alter table media_items enable row level security;
+alter table user_items enable row level security;

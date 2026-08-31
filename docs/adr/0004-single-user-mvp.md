@@ -36,3 +36,10 @@ auth lands.
   and adds complexity before there are any other users.
 - **No `user_id` at all (truly single-user schema):** marginally simpler now, but forces a
   painful data-model migration at the multi-user phase. Rejected.
+
+---
+
+> **Amendment ([ADR 0008](0008-enable-rls-deny-by-default.md)):** the RLS stance above ("left
+> off for the MVP") was revised — RLS is now **enabled with a deny-by-default posture** (no
+> policies). Server access via the `service_role` key is unaffected; the public anon key is
+> locked out. The rest of this ADR still stands.

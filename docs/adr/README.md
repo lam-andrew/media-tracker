@@ -27,3 +27,4 @@ an architecturally significant decision, its context, and its consequences.
 | [0005](0005-quality-gates-and-security-scanning.md) | CI quality gates and security scanning | Accepted |
 | [0006](0006-deployment-via-vercel.md) | Deployment via Vercel's Git integration | Accepted |
 | [0007](0007-metadata-providers.md) | Metadata providers: Open Library, TMDB, RAWG | Accepted |
+| [0008](0008-enable-rls-deny-by-default.md) | Enable Row Level Security (deny-by-default) for the MVP | Accepted |
