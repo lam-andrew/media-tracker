@@ -99,6 +99,34 @@ starting with two just de-risks the abstraction faster.)
 - Optional light social/sharing
 - **Monetization turns on** (see §6)
 
+### Backlog — future feature ideas
+
+**Shelf view — "your library, as objects."** An alternate view of the library where each item is
+rendered as its *physical* form and arranged like a real home collection — leaning hard into
+Marqd's "personal catalog / ownership" identity. Delightful, distinctive, and screenshot-worthy
+(a natural signature/shareable view later). Per-media visualization (the part that needs thought):
+
+- **Books → spines on a bookshelf.** Vertical spines on wooden shelves; height/thickness varied by
+  page count; title + author printed down the spine; spine color derived from the cover's dominant
+  color. The clearest, most iconic case — a good first slice to build alone.
+- **Movies → Blu-ray/DVD cases** standing on a shelf, spines out (title down the spine), the poster
+  shown on the "front" on hover/select — like a media rack.
+- **TV → box sets.** Chunkier cases (a season ≈ a box); thickness or stacking encodes number of
+  seasons, distinguishing them from single films.
+- **Games → cases with platform-tinted spines** (a nod to real shelves — PlayStation blue, Xbox
+  green, Switch red/white), so platform becomes the visual cue.
+- **Layout:** likely one shelf per type (a book shelf, a film shelf, a game shelf) for legibility;
+  a single eclectic "everything" shelf is more magical but harder to keep scannable — worth
+  prototyping both.
+
+Open considerations: (1) **Spine/case art must be generated**, not sourced — APIs give front
+covers/posters, not spines; we'd render spines from dominant color + title text (Canvas/CSS/WebGL),
+and wrap posters onto pseudo-3D cases. (2) **Legibility vs. realism** — readable titles, hover to
+pull an item out / flip to its cover. (3) **Interaction** — click a spine → item detail. (4) It's a
+meaningful design+build effort → a Phase-2 "make it mine" *delight* feature, not core; start with
+books-as-spines and expand. Strongly reinforces positioning and could become the app's signature
+view.
+
 ---
 
 ## 5. Technical architecture
