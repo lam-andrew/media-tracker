@@ -3,6 +3,7 @@
 import { Plus, Check, Loader2 } from "lucide-react";
 import type { NormalizedItem } from "@/lib/providers/types";
 import { getConfig } from "@/lib/media-config";
+import { Cover } from "@/components/media/cover";
 
 export type Layout = "grid" | "rows" | "cards";
 
@@ -15,27 +16,6 @@ function subtitle(item: NormalizedItem): string {
   return [item.creators[0], item.releaseYear, label]
     .filter(Boolean)
     .join(" · ");
-}
-
-function Cover({ item, rounded }: { item: NormalizedItem; rounded: string }) {
-  if (item.imageUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={item.imageUrl}
-        alt=""
-        loading="lazy"
-        className={`h-full w-full object-cover ${rounded}`}
-      />
-    );
-  }
-  return (
-    <div
-      className={`flex h-full w-full items-center justify-center border border-border bg-surface-2 p-2 text-center text-xs text-muted ${rounded}`}
-    >
-      {item.title}
-    </div>
-  );
 }
 
 type AddState = { added: boolean; adding: boolean; onAdd: () => void };
@@ -67,7 +47,7 @@ function CornerAdd({ added, adding, onAdd }: AddState) {
       onClick={onAdd}
       disabled={added || adding}
       aria-label={added ? "Added" : "Add to library"}
-      className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg text-accent transition-colors hover:bg-accent hover:text-surface disabled:opacity-90"
+      className="absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-bg text-accent transition-colors hover:bg-accent hover:text-surface disabled:opacity-90"
     >
       {adding ? (
         <Loader2 size={15} className="animate-spin" />
@@ -80,6 +60,26 @@ function CornerAdd({ added, adding, onAdd }: AddState) {
   );
 }
 
+function FullAddButton({ added, adding, onAdd }: AddState) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={added || adding}
+      className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs text-surface transition-colors hover:bg-accent-strong disabled:opacity-70"
+    >
+      {adding ? (
+        <Loader2 size={14} className="animate-spin" />
+      ) : added ? (
+        <Check size={14} />
+      ) : (
+        <Plus size={14} />
+      )}
+      {added ? "Added" : "Add to library"}
+    </button>
+  );
+}
+
 export interface ResultsProps {
   items: NormalizedItem[];
   layout: Layout;
@@ -87,6 +87,9 @@ export interface ResultsProps {
   addingKey: string | null;
   onAdd: (item: NormalizedItem) => void;
 }
+
+const GRID_SIZES = "(max-width: 640px) 33vw, (max-width: 768px) 25vw, 200px";
+const CARD_SIZES = "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 220px";
 
 export function Results({
   items,
@@ -106,8 +109,12 @@ export function Results({
       <ul className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
         {items.map((item) => (
           <li key={itemKey(item)}>
-            <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border">
-              <Cover item={item} rounded="" />
+            <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-surface-2">
+              <Cover
+                src={item.imageUrl}
+                title={item.title}
+                sizes={GRID_SIZES}
+              />
               <CornerAdd {...state(item)} />
             </div>
             <p className="mt-1.5 line-clamp-2 text-sm text-ink">{item.title}</p>
@@ -126,8 +133,12 @@ export function Results({
             key={itemKey(item)}
             className="flex flex-col rounded-xl border border-border bg-surface p-2.5"
           >
-            <div className="aspect-[2/3] overflow-hidden rounded-md border border-border">
-              <Cover item={item} rounded="" />
+            <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-border bg-surface-2">
+              <Cover
+                src={item.imageUrl}
+                title={item.title}
+                sizes={CARD_SIZES}
+              />
             </div>
             <p className="mt-2 line-clamp-2 font-serif text-sm text-ink">
               {item.title}
@@ -150,8 +161,8 @@ export function Results({
           key={itemKey(item)}
           className="flex items-center gap-3 rounded-lg border border-border bg-surface p-2.5"
         >
-          <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded border border-border">
-            <Cover item={item} rounded="" />
+          <div className="relative h-16 w-11 flex-shrink-0 overflow-hidden rounded border border-border bg-surface-2">
+            <Cover src={item.imageUrl} title={item.title} sizes="44px" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-serif text-[15px] text-ink">
@@ -163,25 +174,5 @@ export function Results({
         </li>
       ))}
     </ul>
-  );
-}
-
-function FullAddButton({ added, adding, onAdd }: AddState) {
-  return (
-    <button
-      type="button"
-      onClick={onAdd}
-      disabled={added || adding}
-      className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs text-surface transition-colors hover:bg-accent-strong disabled:opacity-70"
-    >
-      {adding ? (
-        <Loader2 size={14} className="animate-spin" />
-      ) : added ? (
-        <Check size={14} />
-      ) : (
-        <Plus size={14} />
-      )}
-      {added ? "Added" : "Add to library"}
-    </button>
   );
 }

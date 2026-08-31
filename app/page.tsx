@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -5,9 +6,10 @@ import { openLibraryProvider } from "@/lib/providers/openlibrary";
 import type { NormalizedItem } from "@/lib/providers/types";
 import { MEDIA_TYPES } from "@/lib/media-config";
 import { DiscoverSearch } from "@/components/dashboard/discover-search";
+import { Cover } from "@/components/media/cover";
 
-// Cache the recommendation fetch for an hour rather than hitting Open Library on
-// every load. Real (rating-based) recommendations come in Phase 2 — see docs/PLAN.md §5a.
+// Cache the recommendation fetch for an hour. Real (rating-based) recommendations
+// come in Phase 2 — see docs/PLAN.md §5a.
 export const revalidate = 3600;
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
@@ -26,9 +28,55 @@ async function getRecommendations(): Promise<NormalizedItem[]> {
   }
 }
 
-export default async function DiscoverPage() {
-  const recs = await getRecommendations();
+function RecSkeleton() {
+  return (
+    <ul className="flex gap-4 overflow-x-auto pb-2">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <li key={i} className="w-36 flex-shrink-0 sm:w-40">
+          <div className="aspect-[2/3] animate-pulse rounded-lg border border-border bg-surface-2" />
+          <div className="mt-2 h-3.5 w-3/4 animate-pulse rounded bg-surface-2" />
+          <div className="mt-1 h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
+async function Recommendations() {
+  const recs = await getRecommendations();
+  if (recs.length === 0) {
+    return (
+      <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+        Recommendations are taking a break — try a search above.
+      </p>
+    );
+  }
+  return (
+    <ul className="flex gap-4 overflow-x-auto pb-2">
+      {recs.map((item) => (
+        <li
+          key={`${item.externalSource}:${item.externalId}`}
+          className="w-36 flex-shrink-0 sm:w-40"
+        >
+          <Link
+            href={`/search?type=book&q=${encodeURIComponent(item.title)}`}
+            className="block"
+          >
+            <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
+              <Cover src={item.imageUrl} title={item.title} sizes="160px" />
+            </div>
+            <p className="mt-2 line-clamp-1 text-sm text-ink">{item.title}</p>
+            <p className="line-clamp-1 text-xs text-muted">
+              {item.creators[0] ?? "Unknown"}
+            </p>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function DiscoverPage() {
   return (
     <div className="mx-auto max-w-6xl">
       <h1 className="font-serif text-3xl font-medium text-ink sm:text-4xl">
@@ -49,44 +97,9 @@ export default async function DiscoverPage() {
             View all <ArrowRight size={14} />
           </Link>
         </div>
-
-        {recs.length > 0 ? (
-          <ul className="flex gap-4 overflow-x-auto pb-2">
-            {recs.map((item) => (
-              <li
-                key={`${item.externalSource}:${item.externalId}`}
-                className="w-36 flex-shrink-0 sm:w-40"
-              >
-                <Link
-                  href={`/search?type=book&q=${encodeURIComponent(item.title)}`}
-                  className="group block"
-                >
-                  <div className="aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
-                    {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.imageUrl}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-                      />
-                    ) : null}
-                  </div>
-                  <p className="mt-2 line-clamp-1 text-sm text-ink">
-                    {item.title}
-                  </p>
-                  <p className="line-clamp-1 text-xs text-muted">
-                    {item.creators[0] ?? "Unknown"}
-                  </p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-            Recommendations are taking a break — try a search above.
-          </p>
-        )}
+        <Suspense fallback={<RecSkeleton />}>
+          <Recommendations />
+        </Suspense>
       </section>
 
       <section className="mt-12">

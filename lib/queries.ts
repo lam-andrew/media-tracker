@@ -60,3 +60,71 @@ export async function getLibrary(typeFilter?: string): Promise<LibraryItem[]> {
       creators: r.media_items.creators ?? [],
     }));
 }
+
+/** A single library item with full tracking + metadata, for the detail view. */
+export interface ItemDetail {
+  id: string;
+  status: Status;
+  rating: number | null;
+  progress: Record<string, unknown>;
+  notes: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  type: string;
+  title: string;
+  imageUrl: string | null;
+  releaseYear: number | null;
+  creators: string[];
+  metadata: Record<string, unknown>;
+}
+
+type RawItemRow = {
+  id: string;
+  status: Status;
+  rating: number | null;
+  progress: Record<string, unknown> | null;
+  notes: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  media_items: {
+    type: string;
+    title: string;
+    image_url: string | null;
+    release_year: number | null;
+    creators: string[] | null;
+    metadata: Record<string, unknown> | null;
+  } | null;
+};
+
+/** Fetch one library item (the single MVP user's) by its user_items id. */
+export async function getItem(userItemId: string): Promise<ItemDetail | null> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("user_items")
+    .select(
+      "id, status, rating, progress, notes, started_at, finished_at, media_items(type, title, image_url, release_year, creators, metadata)",
+    )
+    .eq("id", userItemId)
+    .eq("user_id", DEFAULT_USER_ID)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  const row = data as unknown as RawItemRow | null;
+  if (!row || !row.media_items) return null;
+
+  return {
+    id: row.id,
+    status: row.status,
+    rating: row.rating,
+    progress: row.progress ?? {},
+    notes: row.notes,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+    type: row.media_items.type,
+    title: row.media_items.title,
+    imageUrl: row.media_items.image_url,
+    releaseYear: row.media_items.release_year,
+    creators: row.media_items.creators ?? [],
+    metadata: row.media_items.metadata ?? {},
+  };
+}

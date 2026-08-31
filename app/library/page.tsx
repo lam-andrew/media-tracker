@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Library, Star } from "lucide-react";
 import { getLibrary } from "@/lib/queries";
 import { getConfig, MEDIA_TYPES } from "@/lib/media-config";
+import { Cover } from "@/components/media/cover";
+
+const LIB_SIZES = "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 200px";
 
 export const metadata: Metadata = { title: "My Library" };
 
@@ -80,40 +83,34 @@ export default async function LibraryPage({
               getConfig(item.type)?.statusLabels[item.status] ?? item.status;
             return (
               <li key={item.id}>
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
-                  {item.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                <Link href={`/item/${item.id}`} className="group block">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2 transition-colors group-hover:border-border-strong">
+                    <Cover
                       src={item.imageUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover"
+                      title={item.title}
+                      sizes={LIB_SIZES}
                     />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center p-2 text-center text-xs text-muted">
-                      {item.title}
+                    <span className="absolute left-1.5 top-1.5 rounded-md bg-bg/90 px-2 py-0.5 text-[11px] font-medium text-accent">
+                      {statusLabel}
                     </span>
-                  )}
-                  <span className="absolute left-1.5 top-1.5 rounded-md bg-bg/90 px-2 py-0.5 text-[11px] font-medium text-accent">
-                    {statusLabel}
-                  </span>
-                </div>
-                <p className="mt-1.5 line-clamp-1 text-sm text-ink">
-                  {item.title}
-                </p>
-                <p className="flex items-center gap-1.5 text-xs text-muted">
-                  <span className="line-clamp-1">
-                    {[item.creators[0], item.releaseYear]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                  {item.rating ? (
-                    <span className="ml-auto flex flex-shrink-0 items-center gap-0.5 text-star">
-                      <Star size={11} fill="currentColor" strokeWidth={0} />
-                      {item.rating}
+                  </div>
+                  <p className="mt-1.5 line-clamp-1 text-sm text-ink">
+                    {item.title}
+                  </p>
+                  <p className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className="line-clamp-1">
+                      {[item.creators[0], item.releaseYear]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
-                  ) : null}
-                </p>
+                    {item.rating ? (
+                      <span className="ml-auto flex flex-shrink-0 items-center gap-0.5 text-star">
+                        <Star size={11} fill="currentColor" strokeWidth={0} />
+                        {item.rating}
+                      </span>
+                    ) : null}
+                  </p>
+                </Link>
               </li>
             );
           })}
