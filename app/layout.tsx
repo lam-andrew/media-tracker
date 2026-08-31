@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { BRAND } from "@/lib/brand";
+import { ToastProvider } from "@/components/toast/toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,7 +35,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

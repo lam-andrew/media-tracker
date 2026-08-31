@@ -17,6 +17,12 @@ export interface RawgGame {
   playtime?: number;
 }
 
+interface RawgGameDetail extends RawgGame {
+  description_raw?: string;
+  genres?: { name: string }[];
+  metacritic?: number | null;
+}
+
 async function rawgFetch(path: string): Promise<unknown> {
   const key = process.env.RAWG_API_KEY;
   if (!key) throw new Error("RAWG_API_KEY is not set");
@@ -52,7 +58,17 @@ export const rawgProvider: MetadataProvider = {
     return (data.results ?? []).map(mapRawgGame);
   },
   async getById(externalId: string): Promise<NormalizedItem | null> {
-    const g = (await rawgFetch(`/games/${externalId}`)) as RawgGame;
-    return g?.id ? mapRawgGame(g) : null;
+    const g = (await rawgFetch(`/games/${externalId}`)) as RawgGameDetail;
+    if (!g?.id) return null;
+    return {
+      ...mapRawgGame(g),
+      metadata: {
+        description: g.description_raw ?? null,
+        genres: (g.genres ?? []).map((x) => x.name),
+        platforms: (g.platforms ?? []).map((p) => p.platform.name),
+        playtime: g.playtime ?? null,
+        metacritic: g.metacritic ?? null,
+      },
+    };
   },
 };

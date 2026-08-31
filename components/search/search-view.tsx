@@ -15,6 +15,7 @@ import type { NormalizedItem } from "@/lib/providers/types";
 import { addToLibrary } from "@/lib/actions";
 import { Results, itemKey, type Layout } from "@/components/media/result-views";
 import { LayoutToggle } from "@/components/media/layout-toggle";
+import { useToast } from "@/components/toast/toast";
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   book: BookOpen,
@@ -42,6 +43,7 @@ export function SearchView({
   const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Restore the saved layout preference on mount.
   useEffect(() => {
@@ -112,6 +114,7 @@ export function SearchView({
     try {
       await addToLibrary(item, "backlog");
       setAddedKeys((prev) => new Set(prev).add(key));
+      toast("Added to your library", "success");
     } catch (err) {
       setAddError((err as Error).message);
     } finally {

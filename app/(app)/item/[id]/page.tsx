@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getItem } from "@/lib/queries";
+import { getProvider } from "@/lib/providers/registry";
+import { deriveDetailInfo } from "@/lib/media-detail";
 import { ItemTracker } from "@/components/item/item-tracker";
 
 export const dynamic = "force-dynamic";
@@ -23,5 +25,17 @@ export default async function ItemPage({
   const { id } = await params;
   const item = await getItem(id);
   if (!item) notFound();
-  return <ItemTracker item={item} />;
+
+  // Enrich with live provider metadata (description, genres, facts). Best-effort:
+  // if the provider is slow or errors, fall back to whatever was cached on add.
+  let metadata = item.metadata;
+  try {
+    const enriched = await getProvider(item.type)?.getById(item.externalId);
+    if (enriched) metadata = { ...item.metadata, ...enriched.metadata };
+  } catch {
+    // keep stored metadata
+  }
+  const detail = deriveDetailInfo(item.type, metadata);
+
+  return <ItemTracker item={item} detail={detail} />;
 }

@@ -40,6 +40,22 @@ export interface TmdbTv {
   overview?: string;
 }
 
+interface TmdbGenre {
+  id: number;
+  name: string;
+}
+interface TmdbMovieDetail extends TmdbMovie {
+  genres?: TmdbGenre[];
+  runtime?: number;
+  tagline?: string;
+}
+interface TmdbTvDetail extends TmdbTv {
+  genres?: TmdbGenre[];
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  episode_run_time?: number[];
+}
+
 /** Pure mapper: a TMDB movie result → NormalizedItem. */
 export function mapTmdbMovie(r: TmdbMovie): NormalizedItem {
   return {
@@ -77,8 +93,17 @@ export const movieProvider: MetadataProvider = {
     return (data.results ?? []).map(mapTmdbMovie);
   },
   async getById(externalId: string): Promise<NormalizedItem | null> {
-    const r = (await tmdbFetch(`/movie/${externalId}`)) as TmdbMovie;
-    return r?.id ? mapTmdbMovie(r) : null;
+    const r = (await tmdbFetch(`/movie/${externalId}`)) as TmdbMovieDetail;
+    if (!r?.id) return null;
+    return {
+      ...mapTmdbMovie(r),
+      metadata: {
+        description: r.overview ?? null,
+        genres: (r.genres ?? []).map((g) => g.name),
+        runtime: r.runtime ?? null,
+        tagline: r.tagline || null,
+      },
+    };
   },
 };
 
@@ -91,7 +116,17 @@ export const tvProvider: MetadataProvider = {
     return (data.results ?? []).map(mapTmdbTv);
   },
   async getById(externalId: string): Promise<NormalizedItem | null> {
-    const r = (await tmdbFetch(`/tv/${externalId}`)) as TmdbTv;
-    return r?.id ? mapTmdbTv(r) : null;
+    const r = (await tmdbFetch(`/tv/${externalId}`)) as TmdbTvDetail;
+    if (!r?.id) return null;
+    return {
+      ...mapTmdbTv(r),
+      metadata: {
+        description: r.overview ?? null,
+        genres: (r.genres ?? []).map((g) => g.name),
+        seasons: r.number_of_seasons ?? null,
+        episodes: r.number_of_episodes ?? null,
+        episodeRuntime: r.episode_run_time?.[0] ?? null,
+      },
+    };
   },
 };

@@ -31,6 +31,7 @@ create table if not exists user_items (
   media_item_id uuid not null references media_items (id) on delete cascade,
   status        text not null default 'backlog', -- backlog | in_progress | completed | abandoned
   rating        numeric(2, 1),                   -- 0.5..5.0 (half-stars), nullable
+  favorite      boolean not null default false,
   progress      jsonb not null default '{}',     -- {current_page,total_pages}|{season,episode}|{percent}
   notes         text,
   started_at    date,

@@ -63,7 +63,16 @@ export const openLibraryProvider: MetadataProvider = {
       headers: { "User-Agent": UA },
     });
     if (!res.ok) return null;
-    const work = (await res.json()) as { title?: string; covers?: number[] };
+    const work = (await res.json()) as {
+      title?: string;
+      covers?: number[];
+      description?: string | { value?: string };
+      subjects?: string[];
+    };
+    const description =
+      typeof work.description === "string"
+        ? work.description
+        : (work.description?.value ?? null);
     return {
       externalSource: "openlibrary",
       externalId,
@@ -72,7 +81,10 @@ export const openLibraryProvider: MetadataProvider = {
       creators: [],
       imageUrl: coverUrl(work.covers?.[0]),
       releaseYear: null,
-      metadata: {},
+      metadata: {
+        description,
+        genres: (work.subjects ?? []).slice(0, 6),
+      },
     };
   },
 };

@@ -3,35 +3,47 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Loader2, Check } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2, Check, Heart } from "lucide-react";
 import { STATUSES, type Status } from "@/lib/constants";
 import { getConfig } from "@/lib/media-config";
 import type { ItemDetail } from "@/lib/queries";
+import type { DetailInfo } from "@/lib/media-detail";
 import { Cover } from "@/components/media/cover";
 import { RatingStars } from "@/components/item/rating-stars";
+import { useToast } from "@/components/toast/toast";
 import {
   updateStatus,
   updateRating,
   updateProgress,
   updateNotes,
   removeFromLibrary,
+  toggleFavorite,
 } from "@/lib/actions";
 
 function toInput(v: unknown): string {
   return typeof v === "number" ? String(v) : "";
 }
 
-export function ItemTracker({ item }: { item: ItemDetail }) {
+export function ItemTracker({
+  item,
+  detail,
+}: {
+  item: ItemDetail;
+  detail: DetailInfo;
+}) {
   const router = useRouter();
+  const { toast } = useToast();
   const config = getConfig(item.type);
   const kind = config?.progressKind ?? "none";
 
   const [status, setStatus] = useState<Status>(item.status);
   const [rating, setRating] = useState<number | null>(item.rating);
+  const [favorite, setFavorite] = useState(item.favorite);
   const [notes, setNotes] = useState(item.notes ?? "");
   const [progress, setProgress] = useState<Record<string, unknown>>(
     item.progress ?? {},
   );
+  const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
 
@@ -55,9 +67,17 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
     setRating(next);
     void run(() => updateRating(item.id, next));
   }
+  function toggleFav() {
+    const next = !favorite;
+    setFavorite(next);
+    void run(async () => {
+      await toggleFavorite(item.id, next);
+      toast(next ? "Added to favorites" : "Removed from favorites", "success");
+    });
+  }
   function setProgressKey(key: string, value: string) {
-    const num = value === "" ? undefined : Number(value);
-    setProgress((p) => ({ ...p, [key]: num }));
+    const n = value === "" ? undefined : Number(value);
+    setProgress((p) => ({ ...p, [key]: n }));
   }
   function saveProgress() {
     void run(() => updateProgress(item.id, progress));
@@ -69,6 +89,7 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
   async function remove() {
     if (!window.confirm(`Remove "${item.title}" from your library?`)) return;
     await removeFromLibrary(item.id);
+    toast("Removed from library");
     router.push("/library");
     router.refresh();
   }
@@ -76,6 +97,7 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
   const meta = [item.creators[0], item.releaseYear, config?.label]
     .filter(Boolean)
     .join(" · ");
+  const longDescription = (detail.description?.length ?? 0) > 280;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -112,13 +134,73 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
         </div>
 
         <div>
-          <h1 className="font-serif text-3xl font-medium leading-tight text-ink">
-            {item.title}
-          </h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-serif text-3xl font-medium leading-tight text-ink">
+              {item.title}
+            </h1>
+            <button
+              type="button"
+              onClick={toggleFav}
+              aria-pressed={favorite}
+              aria-label={
+                favorite ? "Remove from favorites" : "Add to favorites"
+              }
+              className="mt-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-border transition-colors hover:border-border-strong"
+            >
+              <Heart
+                size={18}
+                className={favorite ? "text-accent" : "text-muted"}
+                fill={favorite ? "currentColor" : "none"}
+              />
+            </button>
+          </div>
           <p className="mt-1 text-sm text-muted">{meta}</p>
 
-          {/* Status */}
-          <div className="mt-6">
+          {detail.genres.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {detail.genres.map((g) => (
+                <span
+                  key={g}
+                  className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs text-muted"
+                >
+                  {g}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {detail.description ? (
+            <div className="mt-4">
+              <p
+                className={`text-sm leading-relaxed text-muted ${expanded ? "" : "line-clamp-5"}`}
+              >
+                {detail.description}
+              </p>
+              {longDescription ? (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((e) => !e)}
+                  className="mt-1 text-xs text-accent underline-offset-2 hover:underline"
+                >
+                  {expanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {detail.facts.length ? (
+            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
+              {detail.facts.map((f) => (
+                <div key={f.label}>
+                  <dt className="text-xs text-muted">{f.label}</dt>
+                  <dd className="text-sm text-ink">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          {/* Tracking */}
+          <div className="mt-7 border-t border-border pt-6">
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
               Status
             </p>
@@ -143,7 +225,6 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
             </div>
           </div>
 
-          {/* Rating */}
           <div className="mt-6">
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
               Rating
@@ -151,7 +232,6 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
             <RatingStars value={rating} onChange={changeRating} />
           </div>
 
-          {/* Progress */}
           {kind !== "none" ? (
             <div className="mt-6">
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
@@ -219,7 +299,6 @@ export function ItemTracker({ item }: { item: ItemDetail }) {
             </div>
           ) : null}
 
-          {/* Notes */}
           <div className="mt-6">
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
               Notes

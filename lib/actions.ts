@@ -134,3 +134,14 @@ export async function removeFromLibrary(
   revalidatePath("/library");
   return { ok: true };
 }
+
+export async function toggleFavorite(
+  userItemId: string,
+  favorite: boolean,
+): Promise<{ ok: true }> {
+  await patchUserItem(userItemId, { favorite });
+  revalidatePath("/library");
+  revalidatePath("/favorites");
+  revalidatePath(`/item/${userItemId}`);
+  return { ok: true };
+}
