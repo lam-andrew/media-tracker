@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { DEFAULT_USER_ID, type Status } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
+import { type Status } from "@/lib/constants";
 
 /** A saved library entry: the user's tracking record joined with item metadata. */
 export interface LibraryItem {
@@ -30,13 +30,12 @@ type RawRow = {
 
 /** Fetch the (single MVP) user's library, newest first, optionally filtered by type. */
 export async function getLibrary(typeFilter?: string): Promise<LibraryItem[]> {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_items")
     .select(
       "id, status, rating, media_item_id, media_items(type, title, image_url, release_year, creators)",
     )
-    .eq("user_id", DEFAULT_USER_ID)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -98,14 +97,13 @@ type RawItemRow = {
 
 /** Fetch one library item (the single MVP user's) by its user_items id. */
 export async function getItem(userItemId: string): Promise<ItemDetail | null> {
-  const supabase = getSupabaseAdmin();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("user_items")
     .select(
       "id, status, rating, progress, notes, started_at, finished_at, media_items(type, title, image_url, release_year, creators, metadata)",
     )
     .eq("id", userItemId)
-    .eq("user_id", DEFAULT_USER_ID)
     .maybeSingle();
 
   if (error) throw new Error(error.message);

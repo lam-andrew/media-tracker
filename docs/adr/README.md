@@ -28,3 +28,4 @@ an architecturally significant decision, its context, and its consequences.
 | [0006](0006-deployment-via-vercel.md) | Deployment via Vercel's Git integration | Accepted |
 | [0007](0007-metadata-providers.md) | Metadata providers: Open Library, TMDB, RAWG | Accepted |
 | [0008](0008-enable-rls-deny-by-default.md) | Enable Row Level Security (deny-by-default) for the MVP | Accepted |
+| [0009](0009-supabase-auth-multi-user.md) | Supabase Auth for multi-user (Google OAuth + email/password) | Accepted |

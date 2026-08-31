@@ -1,22 +1,32 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 /**
- * Server-side Supabase client (service role). For use in server actions and route
- * handlers only — never import this into client components; the service-role key
- * must never reach the browser. Created lazily so a missing env var fails at call
- * time, not at build/import time. See ADR 0004 (RLS off for the single-user MVP).
+ * Server-side Supabase client bound to the request's auth cookies. Every query
+ * runs AS the signed-in user, so row-level security scopes data to them. Use in
+ * server components, server actions, and route handlers.
  */
-let cached: SupabaseClient | null = null;
-
-export function getSupabaseAdmin(): SupabaseClient {
-  if (cached) return cached;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    throw new Error(
-      "Supabase server env not set (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).",
-    );
-  }
-  cached = createClient(url, serviceKey, { auth: { persistSession: false } });
-  return cached;
+export async function createClient() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options),
+            );
+          } catch {
+            // Called from a Server Component — the middleware refreshes the
+            // session cookie instead, so this can be safely ignored.
+          }
+        },
+      },
+    },
+  );
 }

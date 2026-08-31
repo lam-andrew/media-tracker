@@ -13,10 +13,12 @@ import {
   Menu,
   X,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { signOut } from "@/lib/auth-actions";
 
 const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Discover", icon: Compass },
@@ -25,45 +27,53 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/favorites", label: "Favorites", icon: Heart },
 ];
 
-/**
- * The dashboard frame: a left sidebar (Discover / Search / My Library / Favorites)
- * plus a main area with a slim top bar. Collapses to a top bar + drawer on mobile.
- * Layout language follows the "Digital Book Library Dashboard" reference, in the
- * Literary-light / Warm-dark palette.
- */
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  userEmail: string;
+}) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-  const navList = (onNavigate?: () => void) =>
-    NAV.map(({ href, label, icon: Icon }) => {
-      const active = isActive(href);
-      return (
-        <Link
-          key={href}
-          href={href}
-          onClick={onNavigate}
-          aria-current={active ? "page" : undefined}
-          className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-            active
-              ? "bg-surface-2 font-medium text-ink"
-              : "text-muted hover:text-ink"
+  function navItem(
+    href: string,
+    label: string,
+    Icon: LucideIcon,
+    onNavigate?: () => void,
+  ) {
+    const active = isActive(href);
+    return (
+      <Link
+        key={href}
+        href={href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+          active
+            ? "bg-surface-2 font-medium text-ink"
+            : "text-muted hover:text-ink"
+        }`}
+      >
+        <span
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+            active ? "bg-accent text-surface" : "text-muted"
           }`}
         >
-          <span
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-              active ? "bg-accent text-surface" : "text-muted"
-            }`}
-          >
-            <Icon size={17} />
-          </span>
-          {label}
-        </Link>
-      );
-    });
+          <Icon size={17} />
+        </span>
+        {label}
+      </Link>
+    );
+  }
+
+  const initial = userEmail ? userEmail[0].toUpperCase() : "?";
+  const username = userEmail ? userEmail.split("@")[0] : "Account";
 
   return (
     <div className="flex min-h-screen">
@@ -79,17 +89,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <p className="mt-8 px-2.5 text-xs uppercase tracking-widest text-muted">
           Menu
         </p>
-        <nav className="mt-2 flex flex-col gap-1">{navList()}</nav>
+        <nav className="mt-2 flex flex-col gap-1">
+          {NAV.map((n) => navItem(n.href, n.label, n.icon))}
+        </nav>
 
         <div className="my-5 border-t border-border" />
-        <div className="flex flex-col gap-1">
-          <span className="flex cursor-default items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-muted/70">
-            <span className="flex h-8 w-8 items-center justify-center">
-              <Settings size={17} />
-            </span>
-            Settings
-          </span>
-        </div>
+        <nav className="flex flex-col gap-1">
+          {navItem("/settings", "Settings", Settings)}
+        </nav>
 
         <div className="mt-auto flex items-center gap-3 px-1.5 pt-6">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent font-serif text-surface">
@@ -128,20 +135,74 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             >
               <Bell size={16} />
             </button>
-            <span className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-1 pr-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-2 text-xs font-medium text-ink">
-                Y
-              </span>
-              <span className="hidden text-sm text-ink sm:inline">You</span>
-              <ChevronDown size={14} className="hidden text-muted sm:inline" />
-            </span>
+
+            {/* Profile dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProfileOpen((v) => !v)}
+                aria-expanded={profileOpen}
+                aria-label="Account menu"
+                className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 pl-1 pr-2.5 transition-colors hover:border-border-strong"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-medium text-surface">
+                  {initial}
+                </span>
+                <span className="hidden max-w-[8rem] truncate text-sm text-ink sm:inline">
+                  {username}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className="hidden text-muted sm:inline"
+                />
+              </button>
+
+              {profileOpen ? (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    onClick={() => setProfileOpen(false)}
+                    className="fixed inset-0 z-20 cursor-default"
+                  />
+                  <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                    <div className="px-3 py-2">
+                      <p className="text-xs text-muted">Signed in as</p>
+                      <p className="truncate text-sm text-ink">{userEmail}</p>
+                    </div>
+                    <div className="my-1 border-t border-border" />
+                    <Link
+                      href="/settings"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-2"
+                    >
+                      <Settings size={15} className="text-muted" /> Settings
+                    </Link>
+                    <form action={signOut}>
+                      <button
+                        type="submit"
+                        className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-ink transition-colors hover:bg-surface-2"
+                      >
+                        <LogOut size={15} className="text-muted" /> Sign out
+                      </button>
+                    </form>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
         </header>
 
         {/* Mobile drawer */}
         {menuOpen ? (
           <nav className="flex flex-col gap-1 border-b border-border bg-surface px-4 py-3 md:hidden">
-            {navList(() => setMenuOpen(false))}
+            {NAV.map((n) =>
+              navItem(n.href, n.label, n.icon, () => setMenuOpen(false)),
+            )}
+            {navItem("/settings", "Settings", Settings, () =>
+              setMenuOpen(false),
+            )}
           </nav>
         ) : null}
 

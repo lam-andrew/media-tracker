@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { DEFAULT_USER_ID, type Status } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
+import { type Status } from "@/lib/constants";
 import type { NormalizedItem } from "@/lib/providers/types";
 
 function today(): string {
@@ -13,31 +13,26 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** Scope every write to the single MVP user, then update. */
-async function patchUserItem(
-  userItemId: string,
-  patch: Record<string, unknown>,
-): Promise<void> {
-  const supabase = getSupabaseAdmin();
-  const { error } = await supabase
-    .from("user_items")
-    .update({ ...patch, updated_at: nowIso() })
-    .eq("id", userItemId)
-    .eq("user_id", DEFAULT_USER_ID);
-  if (error) throw new Error(error.message);
+async function requireUserClient() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in.");
+  return { supabase, user };
 }
 
 /**
- * Add an item to the library: upsert the shared media_items row, then attach a
- * user_items tracking record for the (single, MVP) user. Idempotent — adding the
- * same item twice is a no-op. Requires Supabase env (see .env.example); until it's
- * configured, this throws a clear error the caller surfaces.
+ * Add an item to the signed-in user's library: upsert the shared media_items row,
+ * then attach a user_items tracking record. Row-level security keeps each user's
+ * tracking rows private; the shared metadata cache is readable/insertable by any
+ * signed-in user. Idempotent.
  */
 export async function addToLibrary(
   item: NormalizedItem,
   status: Status = "backlog",
 ): Promise<{ ok: true }> {
-  const supabase = getSupabaseAdmin();
+  const { supabase, user } = await requireUserClient();
 
   const { data: media, error: mediaErr } = await supabase
     .from("media_items")
@@ -61,20 +56,31 @@ export async function addToLibrary(
     throw new Error(mediaErr?.message ?? "Failed to save the item.");
   }
 
-  const { error: userErr } = await supabase.from("user_items").upsert(
-    {
-      user_id: DEFAULT_USER_ID,
-      media_item_id: media.id,
-      status,
-    },
-    { onConflict: "user_id,media_item_id", ignoreDuplicates: true },
-  );
+  const { error: userErr } = await supabase
+    .from("user_items")
+    .upsert(
+      { user_id: user.id, media_item_id: media.id, status },
+      { onConflict: "user_id,media_item_id", ignoreDuplicates: true },
+    );
 
   if (userErr) throw new Error(userErr.message);
+  revalidatePath("/library");
   return { ok: true };
 }
 
-/** Change tracking status; stamp started/finished dates on the natural transitions. */
+/** Update one of the user's tracking rows; RLS ensures it's theirs. */
+async function patchUserItem(
+  userItemId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const { supabase } = await requireUserClient();
+  const { error } = await supabase
+    .from("user_items")
+    .update({ ...patch, updated_at: nowIso() })
+    .eq("id", userItemId);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateStatus(
   userItemId: string,
   status: Status,
@@ -88,7 +94,6 @@ export async function updateStatus(
   return { ok: true };
 }
 
-/** Set or clear the half-star rating (0.5–5.0, or null). */
 export async function updateRating(
   userItemId: string,
   rating: number | null,
@@ -99,7 +104,6 @@ export async function updateRating(
   return { ok: true };
 }
 
-/** Persist type-specific progress (pages / episodes / percent) as JSON. */
 export async function updateProgress(
   userItemId: string,
   progress: Record<string, unknown>,
@@ -109,7 +113,6 @@ export async function updateProgress(
   return { ok: true };
 }
 
-/** Save free-text notes. */
 export async function updateNotes(
   userItemId: string,
   notes: string,
@@ -119,16 +122,14 @@ export async function updateNotes(
   return { ok: true };
 }
 
-/** Remove an item from the library. */
 export async function removeFromLibrary(
   userItemId: string,
 ): Promise<{ ok: true }> {
-  const supabase = getSupabaseAdmin();
+  const { supabase } = await requireUserClient();
   const { error } = await supabase
     .from("user_items")
     .delete()
-    .eq("id", userItemId)
-    .eq("user_id", DEFAULT_USER_ID);
+    .eq("id", userItemId);
   if (error) throw new Error(error.message);
   revalidatePath("/library");
   return { ok: true };
