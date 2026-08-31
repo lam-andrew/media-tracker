@@ -127,6 +127,24 @@ meaningful design+build effort → a Phase-2 "make it mine" *delight* feature, n
 books-as-spines and expand. Strongly reinforces positioning and could become the app's signature
 view.
 
+**Visual direction (from Andrew's refs, 2026-08-31):** immersive / spatial — a warm photographic
+shelf with **frosted-glass floating panels** (nav, search, a "now reading" card, and a live
+**Progress** card: streak, pages/day, time). A **Carousel ↔ Gallery** toggle: in *Carousel*, one
+item stands **face-out** (full cover) with its neighbors as **spines**; *Gallery* is the flat poster
+grid we already have. Refs:
+[Applebee Immersive Reading App](https://dribbble.com/shots/27179977-Applebee-Immersive-Reading-App-Interface)
+(the visionOS/spatial look Andrew shared) and
+[Illustrated Editions Bookstore](https://dribbble.com/shots/27627707-Illustrated-Editions-Bookstore-Landing-Page)
+(warmer editorial aesthetic).
+
+**Reality check on those refs:** they use **real, hand-picked spine photography** — which we can't
+source per-title (metadata APIs return front covers only). So a shelf that works for *any* book still
+means **generating spines** (dominant color + title text) and wrapping covers onto pseudo-3D cases.
+The **"face-out hero + spine neighbors" Carousel is the most achievable, highest-impact slice** to
+start with. The full spatial/AR version (panels floating in a real room) suits a **future
+native/visionOS app**; the web version is a **2.5D glass-and-shelf approximation** (CSS
+transforms/`backdrop-filter`, or Canvas/WebGL for the spines).
+
 ---
 
 ## 5. Technical architecture
