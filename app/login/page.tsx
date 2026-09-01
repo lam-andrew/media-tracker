@@ -3,18 +3,27 @@
 import { useActionState, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { BRAND } from "@/lib/brand";
-import { signIn, signUp, type AuthState } from "@/lib/auth-actions";
+import {
+  signIn,
+  signUp,
+  requestPasswordReset,
+  type AuthState,
+} from "@/lib/auth-actions";
 import { createClient } from "@/lib/supabase/client";
 
 const initial: AuthState = {};
+type Mode = "signin" | "signup" | "forgot";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [googlePending, setGooglePending] = useState(false);
-  const [state, formAction, pending] = useActionState(
-    mode === "signup" ? signUp : signIn,
-    initial,
-  );
+  const action =
+    mode === "signup"
+      ? signUp
+      : mode === "forgot"
+        ? requestPasswordReset
+        : signIn;
+  const [state, formAction, pending] = useActionState(action, initial);
 
   async function signInWithGoogle() {
     setGooglePending(true);
@@ -25,6 +34,19 @@ export default function LoginPage() {
     });
     if (error) setGooglePending(false); // otherwise the browser is redirecting away
   }
+
+  const heading =
+    mode === "signin"
+      ? "Welcome back"
+      : mode === "signup"
+        ? "Create your account"
+        : "Reset your password";
+  const sub =
+    mode === "signin"
+      ? "Sign in to your library."
+      : mode === "signup"
+        ? "Start your personal catalog."
+        : "We'll email you a link to set a new password.";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
@@ -37,34 +59,31 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6">
-          <h2 className="font-serif text-xl text-ink">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {mode === "signin"
-              ? "Sign in to your library."
-              : "Start your personal catalog."}
-          </p>
+          <h2 className="font-serif text-xl text-ink">{heading}</h2>
+          <p className="mt-1 text-sm text-muted">{sub}</p>
 
-          <button
-            type="button"
-            onClick={signInWithGoogle}
-            disabled={googlePending}
-            className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-border-strong disabled:opacity-70"
-          >
-            {googlePending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            Continue with Google
-          </button>
-
-          <div className="my-4 flex items-center gap-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted">or</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
+          {mode !== "forgot" ? (
+            <>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                disabled={googlePending}
+                className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-border-strong disabled:opacity-70"
+              >
+                {googlePending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continue with Google
+              </button>
+              <div className="my-4 flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted">or</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          ) : null}
 
           <form action={formAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1">
@@ -78,20 +97,36 @@ export default function LoginPage() {
                 className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-border-strong focus:outline-none"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Password</span>
-              <input
-                type="password"
-                name="password"
-                autoComplete={
-                  mode === "signin" ? "current-password" : "new-password"
-                }
-                required
-                minLength={6}
-                placeholder="••••••••"
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-border-strong focus:outline-none"
-              />
-            </label>
+
+            {mode !== "forgot" ? (
+              <label className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted">
+                    Password
+                  </span>
+                  {mode === "signin" ? (
+                    <button
+                      type="button"
+                      onClick={() => setMode("forgot")}
+                      className="text-xs text-accent underline-offset-2 hover:underline"
+                    >
+                      Forgot?
+                    </button>
+                  ) : null}
+                </div>
+                <input
+                  type="password"
+                  name="password"
+                  autoComplete={
+                    mode === "signin" ? "current-password" : "new-password"
+                  }
+                  required
+                  minLength={6}
+                  placeholder="••••••••"
+                  className="rounded-lg border border-border bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-border-strong focus:outline-none"
+                />
+              </label>
+            ) : null}
 
             {state.error ? (
               <p className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-accent-strong">
@@ -110,20 +145,36 @@ export default function LoginPage() {
               className="mt-1 flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-surface transition-colors hover:bg-accent-strong disabled:opacity-70"
             >
               {pending ? <Loader2 size={16} className="animate-spin" /> : null}
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {mode === "signin"
+                ? "Sign in"
+                : mode === "signup"
+                  ? "Create account"
+                  : "Send reset link"}
             </button>
           </form>
         </div>
 
         <p className="mt-5 text-center text-sm text-muted">
-          {mode === "signin" ? "New to Marqd?" : "Already have an account?"}{" "}
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="text-accent underline-offset-2 hover:underline"
-          >
-            {mode === "signin" ? "Create an account" : "Sign in"}
-          </button>
+          {mode === "forgot" ? (
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="text-accent underline-offset-2 hover:underline"
+            >
+              Back to sign in
+            </button>
+          ) : (
+            <>
+              {mode === "signin" ? "New to Marqd?" : "Already have an account?"}{" "}
+              <button
+                type="button"
+                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                className="text-accent underline-offset-2 hover:underline"
+              >
+                {mode === "signin" ? "Create an account" : "Sign in"}
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>

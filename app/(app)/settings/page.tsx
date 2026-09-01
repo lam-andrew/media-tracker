@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LogOut } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { signOut } from "@/lib/auth-actions";
+import { DeleteAccount } from "@/components/settings/delete-account";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -62,6 +63,20 @@ export default async function SettingsPage() {
             Switch between Literary light and Warm dark using the sun/moon
             toggle in the top bar. Your choice is remembered on this device.
           </p>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted">
+          Danger zone
+        </h2>
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <p className="text-sm text-ink">Delete account</p>
+          <p className="mb-4 mt-1 max-w-md text-sm text-muted">
+            Permanently removes your account and everything in your library.
+            This can&rsquo;t be undone.
+          </p>
+          <DeleteAccount />
         </div>
       </section>
     </div>
