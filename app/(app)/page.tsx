@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { openLibraryProvider } from "@/lib/providers/openlibrary";
+import { googleBooksProvider } from "@/lib/providers/google-books";
 import type { NormalizedItem } from "@/lib/providers/types";
 import { MEDIA_TYPES, getConfig } from "@/lib/media-config";
 import { getRecommendations } from "@/lib/recommend";
@@ -21,7 +21,7 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
 /** Cold-start fallback when the user hasn't loved anything yet. */
 async function getPopularBooks(): Promise<NormalizedItem[]> {
   try {
-    const items = await openLibraryProvider.search("award winning novels");
+    const items = await googleBooksProvider.search("award winning novels");
     return items.filter((i) => i.imageUrl).slice(0, 8);
   } catch {
     return [];

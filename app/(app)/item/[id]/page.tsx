@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getItem } from "@/lib/queries";
@@ -7,13 +8,16 @@ import { ItemTracker } from "@/components/item/item-tracker";
 
 export const dynamic = "force-dynamic";
 
+// Dedupe the item read across generateMetadata and the page (one DB call/request).
+const loadItem = cache(getItem);
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const item = await getItem(id);
+  const item = await loadItem(id);
   return { title: item?.title ?? "Item" };
 }
 
@@ -23,7 +27,7 @@ export default async function ItemPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const item = await getItem(id);
+  const item = await loadItem(id);
   if (!item) notFound();
 
   // Enrich with live provider metadata (description, genres, facts). Best-effort:

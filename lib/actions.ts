@@ -90,7 +90,6 @@ export async function updateStatus(
   if (status === "completed") patch.finished_at = today();
   await patchUserItem(userItemId, patch);
   revalidatePath("/library");
-  revalidatePath(`/item/${userItemId}`);
   return { ok: true };
 }
 
@@ -100,7 +99,6 @@ export async function updateRating(
 ): Promise<{ ok: true }> {
   await patchUserItem(userItemId, { rating });
   revalidatePath("/library");
-  revalidatePath(`/item/${userItemId}`);
   return { ok: true };
 }
 
@@ -109,7 +107,6 @@ export async function updateProgress(
   progress: Record<string, unknown>,
 ): Promise<{ ok: true }> {
   await patchUserItem(userItemId, { progress });
-  revalidatePath(`/item/${userItemId}`);
   return { ok: true };
 }
 
@@ -118,7 +115,6 @@ export async function updateNotes(
   notes: string,
 ): Promise<{ ok: true }> {
   await patchUserItem(userItemId, { notes });
-  revalidatePath(`/item/${userItemId}`);
   return { ok: true };
 }
 
@@ -142,6 +138,5 @@ export async function toggleFavorite(
   await patchUserItem(userItemId, { favorite });
   revalidatePath("/library");
   revalidatePath("/favorites");
-  revalidatePath(`/item/${userItemId}`);
   return { ok: true };
 }
