@@ -1,16 +1,15 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
+import { BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { openLibraryProvider } from "@/lib/providers/openlibrary";
 import type { NormalizedItem } from "@/lib/providers/types";
-import { MEDIA_TYPES } from "@/lib/media-config";
+import { MEDIA_TYPES, getConfig } from "@/lib/media-config";
+import { getRecommendations } from "@/lib/recommend";
 import { DiscoverSearch } from "@/components/dashboard/discover-search";
 import { Cover } from "@/components/media/cover";
 
-// Cache the recommendation fetch for an hour. Real (rating-based) recommendations
-// come in Phase 2 — see docs/PLAN.md §5a.
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   book: BookOpen,
@@ -19,7 +18,8 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   game: Gamepad2,
 };
 
-async function getRecommendations(): Promise<NormalizedItem[]> {
+/** Cold-start fallback when the user hasn't loved anything yet. */
+async function getPopularBooks(): Promise<NormalizedItem[]> {
   try {
     const items = await openLibraryProvider.search("award winning novels");
     return items.filter((i) => i.imageUrl).slice(0, 8);
@@ -30,49 +30,63 @@ async function getRecommendations(): Promise<NormalizedItem[]> {
 
 function RecSkeleton() {
   return (
-    <ul className="flex gap-4 overflow-x-auto pb-2">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <li key={i} className="w-36 flex-shrink-0 sm:w-40">
-          <div className="aspect-[2/3] animate-pulse rounded-lg border border-border bg-surface-2" />
-          <div className="mt-2 h-3.5 w-3/4 animate-pulse rounded bg-surface-2" />
-          <div className="mt-1 h-3 w-1/2 animate-pulse rounded bg-surface-2" />
-        </li>
-      ))}
-    </ul>
+    <>
+      <div className="mb-4 h-6 w-52 animate-pulse rounded bg-surface-2" />
+      <ul className="flex gap-4 overflow-x-auto pb-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <li key={i} className="w-36 flex-shrink-0 sm:w-40">
+            <div className="aspect-[2/3] animate-pulse rounded-lg border border-border bg-surface-2" />
+            <div className="mt-2 h-3.5 w-3/4 animate-pulse rounded bg-surface-2" />
+            <div className="mt-1 h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
 async function Recommendations() {
-  const recs = await getRecommendations();
-  if (recs.length === 0) {
+  const personalized = await getRecommendations();
+  const personalizedMode = personalized.length > 0;
+  const items = personalizedMode ? personalized : await getPopularBooks();
+
+  if (items.length === 0) {
     return (
       <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-        Recommendations are taking a break — try a search above.
+        Rate or favorite a few things and recommendations will show up here.
       </p>
     );
   }
+
   return (
-    <ul className="flex gap-4 overflow-x-auto pb-2">
-      {recs.map((item) => (
-        <li
-          key={`${item.externalSource}:${item.externalId}`}
-          className="w-36 flex-shrink-0 sm:w-40"
-        >
-          <Link
-            href={`/search?type=book&q=${encodeURIComponent(item.title)}`}
-            className="block"
+    <>
+      <h2 className="mb-4 font-serif text-xl text-ink">
+        {personalizedMode
+          ? "Recommended for you"
+          : "Popular reads to get you started"}
+      </h2>
+      <ul className="flex gap-4 overflow-x-auto pb-2">
+        {items.map((item) => (
+          <li
+            key={`${item.externalSource}:${item.externalId}`}
+            className="w-36 flex-shrink-0 sm:w-40"
           >
-            <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
-              <Cover src={item.imageUrl} title={item.title} sizes="160px" />
-            </div>
-            <p className="mt-2 line-clamp-1 text-sm text-ink">{item.title}</p>
-            <p className="line-clamp-1 text-xs text-muted">
-              {item.creators[0] ?? "Unknown"}
-            </p>
-          </Link>
-        </li>
-      ))}
-    </ul>
+            <Link
+              href={`/search?type=${item.type}&q=${encodeURIComponent(item.title)}`}
+              className="block"
+            >
+              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
+                <Cover src={item.imageUrl} title={item.title} sizes="160px" />
+              </div>
+              <p className="mt-2 line-clamp-1 text-sm text-ink">{item.title}</p>
+              <p className="line-clamp-1 text-xs text-muted">
+                {item.creators[0] ?? getConfig(item.type)?.label ?? ""}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -88,15 +102,6 @@ export default function DiscoverPage() {
       </div>
 
       <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-serif text-xl text-ink">Recommended reading</h2>
-          <Link
-            href="/search?type=book"
-            className="flex items-center gap-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink"
-          >
-            View all <ArrowRight size={14} />
-          </Link>
-        </div>
         <Suspense fallback={<RecSkeleton />}>
           <Recommendations />
         </Suspense>
