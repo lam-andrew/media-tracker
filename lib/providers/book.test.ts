@@ -30,32 +30,32 @@ const OL_DOCS = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("bookProvider.search fallback", () => {
-  it("returns Google Books results when available", async () => {
+  it("returns Open Library results when available", async () => {
     const calls: string[] = [];
     mockFetch((url) => {
       calls.push(url);
-      return json(GOOGLE_ITEM);
+      return json(OL_DOCS);
     });
     const items = await bookProvider.search("eragon");
-    expect(items[0].externalSource).toBe("googlebooks");
-    // Open Library must not be hit on the happy path.
-    expect(calls.some((u) => u.includes("openlibrary.org"))).toBe(false);
+    expect(items[0].externalSource).toBe("openlibrary");
+    // Google Books must not be hit on the happy path.
+    expect(calls.some((u) => u.includes("googleapis.com"))).toBe(false);
   });
 
-  it("falls back to Open Library when Google Books 429s", async () => {
+  it("falls back to Google Books when Open Library errors", async () => {
     mockFetch((url) =>
-      url.includes("googleapis.com") ? json({}, 429) : json(OL_DOCS),
+      url.includes("openlibrary.org") ? json({}, 500) : json(GOOGLE_ITEM),
     );
     const items = await bookProvider.search("eragon");
     expect(items).toHaveLength(1);
-    expect(items[0].externalSource).toBe("openlibrary");
+    expect(items[0].externalSource).toBe("googlebooks");
   });
 
-  it("falls back to Open Library when Google Books returns nothing", async () => {
+  it("falls back to Google Books when Open Library returns nothing", async () => {
     mockFetch((url) =>
-      url.includes("googleapis.com") ? json({ items: [] }) : json(OL_DOCS),
+      url.includes("openlibrary.org") ? json({ docs: [] }) : json(GOOGLE_ITEM),
     );
     const items = await bookProvider.search("eragon");
-    expect(items[0].externalSource).toBe("openlibrary");
+    expect(items[0].externalSource).toBe("googlebooks");
   });
 });
