@@ -1,5 +1,5 @@
 import type { MetadataProvider } from "./types";
-import { googleBooksProvider } from "./google-books";
+import { bookProvider } from "./book";
 import { movieProvider, tvProvider } from "./tmdb";
 import { rawgProvider } from "./rawg";
 
@@ -8,7 +8,7 @@ import { rawgProvider } from "./rawg";
  * adding one entry here plus a MEDIA_TYPES config entry — nothing else. See ADR 0002.
  */
 export const PROVIDERS: Record<string, MetadataProvider> = {
-  book: googleBooksProvider,
+  book: bookProvider,
   movie: movieProvider,
   tv: tvProvider,
   game: rawgProvider,

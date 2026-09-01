@@ -10,6 +10,11 @@ import { openLibraryProvider } from "./openlibrary";
  */
 const BASE = "https://www.googleapis.com/books/v1/volumes";
 
+// Optional: raises the per-IP quota (unauthenticated calls 429 quickly, and on
+// Vercel every request shares one egress IP). Set GOOGLE_BOOKS_API_KEY to use it.
+const KEY = process.env.GOOGLE_BOOKS_API_KEY;
+const keyParam = (sep: "?" | "&") => (KEY ? `${sep}key=${KEY}` : "");
+
 interface GVolume {
   id: string;
   volumeInfo?: {
@@ -57,7 +62,7 @@ export const googleBooksProvider: MetadataProvider = {
 
   async search(query: string): Promise<NormalizedItem[]> {
     const res = await fetch(
-      `${BASE}?q=${encodeURIComponent(query)}&maxResults=20&printType=books`,
+      `${BASE}?q=${encodeURIComponent(query)}&maxResults=20&printType=books${keyParam("&")}`,
     );
     if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
     const data = (await res.json()) as { items?: GVolume[] };
@@ -69,7 +74,7 @@ export const googleBooksProvider: MetadataProvider = {
     if (externalId.startsWith("/works/")) {
       return openLibraryProvider.getById(externalId);
     }
-    const res = await fetch(`${BASE}/${externalId}`);
+    const res = await fetch(`${BASE}/${externalId}${keyParam("?")}`);
     if (!res.ok) return null;
     const v = (await res.json()) as GVolume;
     return v?.id ? mapVolume(v) : null;
