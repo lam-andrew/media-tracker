@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Upload } from "lucide-react";
 import { getUser } from "@/lib/auth";
 import { signOut } from "@/lib/auth-actions";
 import { DeleteAccount } from "@/components/settings/delete-account";
@@ -50,6 +51,25 @@ export default async function SettingsPage() {
               </button>
             </form>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted">
+          Your data
+        </h2>
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <p className="text-sm text-ink">Import your history</p>
+          <p className="mb-4 mt-1 max-w-md text-sm text-muted">
+            Bring over what you&rsquo;ve already read and watched from a
+            Goodreads or Letterboxd CSV export.
+          </p>
+          <Link
+            href="/import"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 text-sm text-ink transition-colors hover:border-border-strong"
+          >
+            <Upload size={15} className="text-muted" /> Import from CSV
+          </Link>
         </div>
       </section>
 

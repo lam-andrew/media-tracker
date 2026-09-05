@@ -8,6 +8,8 @@ import {
   Search,
   Library,
   Heart,
+  BarChart3,
+  Upload,
   Settings,
   Bell,
   Menu,
@@ -25,6 +27,13 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/library", label: "My Library", icon: Library },
   { href: "/favorites", label: "Favorites", icon: Heart },
+  { href: "/stats", label: "Stats", icon: BarChart3 },
+];
+
+/** Utilities: shown below the main menu, next to Settings. */
+const TOOLS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/import", label: "Import", icon: Upload },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function DashboardShell({
@@ -95,7 +104,7 @@ export function DashboardShell({
 
         <div className="my-5 border-t border-border" />
         <nav className="flex flex-col gap-1">
-          {navItem("/settings", "Settings", Settings)}
+          {TOOLS.map((n) => navItem(n.href, n.label, n.icon))}
         </nav>
 
         <div className="mt-auto flex items-center gap-3 px-1.5 pt-6">
@@ -200,8 +209,8 @@ export function DashboardShell({
             {NAV.map((n) =>
               navItem(n.href, n.label, n.icon, () => setMenuOpen(false)),
             )}
-            {navItem("/settings", "Settings", Settings, () =>
-              setMenuOpen(false),
+            {TOOLS.map((n) =>
+              navItem(n.href, n.label, n.icon, () => setMenuOpen(false)),
             )}
           </nav>
         ) : null}
