@@ -29,9 +29,13 @@ export async function middleware(request: NextRequest) {
     },
   );
 
+  const t0 = performance.now();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // Observability: how long the auth check cost this request (see Server-Timing
+  // in devtools or `curl -sI`). This is the Vercel→Supabase round-trip.
+  const timing = `auth;dur=${(performance.now() - t0).toFixed(1)}`;
 
   const path = request.nextUrl.pathname;
   const isPublic = path.startsWith("/login") || path.startsWith("/auth");
@@ -39,14 +43,19 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set("Server-Timing", timing);
+    return redirect;
   }
   if (user && path.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    redirect.headers.set("Server-Timing", timing);
+    return redirect;
   }
 
+  response.headers.set("Server-Timing", timing);
   return response;
 }
 
