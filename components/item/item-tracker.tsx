@@ -7,7 +7,6 @@ import { ArrowLeft, Trash2, Loader2, Check, Heart } from "lucide-react";
 import { STATUSES, type Status } from "@/lib/constants";
 import { getConfig } from "@/lib/media-config";
 import type { ItemDetail } from "@/lib/queries";
-import type { DetailInfo } from "@/lib/media-detail";
 import { Cover } from "@/components/media/cover";
 import { RatingStars } from "@/components/item/rating-stars";
 import { useToast } from "@/components/toast/toast";
@@ -26,10 +25,11 @@ function toInput(v: unknown): string {
 
 export function ItemTracker({
   item,
-  detail,
+  details,
 }: {
   item: ItemDetail;
-  detail: DetailInfo;
+  /** Genres/description/facts, streamed in by the page (see ItemDetails). */
+  details: React.ReactNode;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -43,7 +43,6 @@ export function ItemTracker({
   const [progress, setProgress] = useState<Record<string, unknown>>(
     item.progress ?? {},
   );
-  const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
 
@@ -97,7 +96,6 @@ export function ItemTracker({
   const meta = [item.creators[0], item.releaseYear, config?.label]
     .filter(Boolean)
     .join(" · ");
-  const longDescription = (detail.description?.length ?? 0) > 280;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -156,48 +154,7 @@ export function ItemTracker({
           </div>
           <p className="mt-1 text-sm text-muted">{meta}</p>
 
-          {detail.genres.length ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {detail.genres.map((g) => (
-                <span
-                  key={g}
-                  className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs text-muted"
-                >
-                  {g}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          {detail.description ? (
-            <div className="mt-4">
-              <p
-                className={`text-sm leading-relaxed text-muted ${expanded ? "" : "line-clamp-5"}`}
-              >
-                {detail.description}
-              </p>
-              {longDescription ? (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((e) => !e)}
-                  className="mt-1 text-xs text-accent underline-offset-2 hover:underline"
-                >
-                  {expanded ? "Show less" : "Show more"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {detail.facts.length ? (
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3">
-              {detail.facts.map((f) => (
-                <div key={f.label}>
-                  <dt className="text-xs text-muted">{f.label}</dt>
-                  <dd className="text-sm text-ink">{f.value}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
+          {details}
 
           {/* Tracking */}
           <div className="mt-7 border-t border-border pt-6">
