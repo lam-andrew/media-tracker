@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 export default async function AppLayout({
@@ -7,7 +7,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login");
   return (
     <DashboardShell userEmail={user.email ?? ""}>{children}</DashboardShell>

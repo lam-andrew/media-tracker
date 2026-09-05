@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { type Status } from "@/lib/constants";
 import type { NormalizedItem } from "@/lib/providers/types";
 
@@ -13,11 +14,14 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Session-scoped client + who the request is for. Identity comes from the
+ * cookie (no network hop); the write that follows carries the real token, and
+ * RLS rejects it if the token is forged or the row isn't theirs. See ADR 0010.
+ */
 async function requireUserClient() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) throw new Error("You must be signed in.");
   return { supabase, user };
 }
