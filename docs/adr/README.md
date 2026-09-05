@@ -30,3 +30,4 @@ an architecturally significant decision, its context, and its consequences.
 | [0008](0008-enable-rls-deny-by-default.md) | Enable Row Level Security (deny-by-default) for the MVP | Accepted |
 | [0009](0009-supabase-auth-multi-user.md) | Supabase Auth for multi-user (Google OAuth + email/password) | Accepted |
 | [0010](0010-cookie-session-identity-no-per-request-auth-roundtrip.md) | Request identity from the session cookie, not a per-request auth round-trip | Accepted |
+| [0011](0011-stats-and-yearly-goals.md) | Stats computed in-app; yearly goals in a gated `user_goals` table | Accepted |
