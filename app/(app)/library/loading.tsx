@@ -16,6 +16,18 @@ export default function LibraryLoading() {
           />
         ))}
       </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-6 w-16 animate-pulse rounded-full bg-surface-2"
+          />
+        ))}
+        <div className="ml-auto flex gap-2">
+          <div className="h-8 w-32 animate-pulse rounded-md bg-surface-2" />
+          <div className="h-8 w-36 animate-pulse rounded-md bg-surface-2" />
+        </div>
+      </div>
       <GridSkeleton />
     </div>
   );

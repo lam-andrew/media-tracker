@@ -13,3 +13,8 @@ export const STATUSES = [
 ] as const;
 
 export type Status = (typeof STATUSES)[number];
+
+/** Type guard for untrusted input (e.g. a URL search param). */
+export function isStatus(v: unknown): v is Status {
+  return typeof v === "string" && (STATUSES as readonly string[]).includes(v);
+}

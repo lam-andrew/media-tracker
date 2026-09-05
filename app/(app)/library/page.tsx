@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Library } from "lucide-react";
 import { getLibrary } from "@/lib/queries";
+import { isStatus } from "@/lib/constants";
 import { MEDIA_TYPES } from "@/lib/media-config";
-import { LibraryGrid } from "@/components/library/library-grid";
+import { DEFAULT_SORT, isLibrarySort, libraryHref } from "@/lib/library-view";
+import { LibraryBrowser } from "@/components/library/library-browser";
 
 export const metadata: Metadata = { title: "My Library" };
 export const dynamic = "force-dynamic";
@@ -11,12 +13,16 @@ export const dynamic = "force-dynamic";
 export default async function LibraryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; status?: string; sort?: string }>;
 }) {
-  const { type } = await searchParams;
-  const filter =
-    type && MEDIA_TYPES.some((t) => t.type === type) ? type : undefined;
-  const items = await getLibrary({ type: filter });
+  const params = await searchParams;
+  const type =
+    params.type && MEDIA_TYPES.some((t) => t.type === params.type)
+      ? params.type
+      : undefined;
+  const status = isStatus(params.status) ? params.status : undefined;
+  const sort = isLibrarySort(params.sort) ? params.sort : DEFAULT_SORT;
+  const items = await getLibrary({ type });
 
   const tabs = [
     { key: undefined, label: "All" },
@@ -36,11 +42,11 @@ export default async function LibraryPage({
 
       <div className="mt-5 flex flex-wrap gap-2">
         {tabs.map((tab) => {
-          const active = tab.key === filter;
+          const active = tab.key === type;
           return (
             <Link
               key={tab.label}
-              href={tab.key ? `/library?type=${tab.key}` : "/library"}
+              href={libraryHref("/library", { type: tab.key, status, sort })}
               className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
                 active
                   ? "bg-accent text-surface"
@@ -59,7 +65,7 @@ export default async function LibraryPage({
             <Library size={22} />
           </span>
           <p className="mt-4 font-serif text-lg text-ink">
-            {filter ? "Nothing here yet" : "Your library is empty"}
+            {type ? "Nothing here yet" : "Your library is empty"}
           </p>
           <p className="mt-1 max-w-sm text-sm text-muted">
             Search for a book, movie, show, or game and add it — your collection
@@ -73,7 +79,13 @@ export default async function LibraryPage({
           </Link>
         </div>
       ) : (
-        <LibraryGrid items={items} />
+        <LibraryBrowser
+          items={items}
+          basePath="/library"
+          type={type}
+          initialStatus={status}
+          initialSort={sort}
+        />
       )}
     </div>
   );

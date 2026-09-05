@@ -2,12 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { getLibrary } from "@/lib/queries";
-import { LibraryGrid } from "@/components/library/library-grid";
+import { isStatus } from "@/lib/constants";
+import { DEFAULT_SORT, isLibrarySort } from "@/lib/library-view";
+import { LibraryBrowser } from "@/components/library/library-browser";
 
 export const metadata: Metadata = { title: "Favorites" };
 export const dynamic = "force-dynamic";
 
-export default async function FavoritesPage() {
+export default async function FavoritesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; sort?: string }>;
+}) {
+  const params = await searchParams;
+  const status = isStatus(params.status) ? params.status : undefined;
+  const sort = isLibrarySort(params.sort) ? params.sort : DEFAULT_SORT;
   const items = await getLibrary({ favoritesOnly: true });
 
   return (
@@ -39,7 +48,12 @@ export default async function FavoritesPage() {
           </Link>
         </div>
       ) : (
-        <LibraryGrid items={items} />
+        <LibraryBrowser
+          items={items}
+          basePath="/favorites"
+          initialStatus={status}
+          initialSort={sort}
+        />
       )}
     </div>
   );
