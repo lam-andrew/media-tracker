@@ -39,6 +39,8 @@ export function RatingStars({
                 type="button"
                 aria-label={`${i - 0.5} stars`}
                 onMouseEnter={() => setHover(i - 0.5)}
+                onFocus={() => setHover(i - 0.5)}
+                onBlur={() => setHover(null)}
                 onClick={() => onChange(i - 0.5)}
                 className="absolute left-0 top-0 z-10 h-full w-1/2 cursor-pointer"
               />
@@ -46,6 +48,8 @@ export function RatingStars({
                 type="button"
                 aria-label={`${i} stars`}
                 onMouseEnter={() => setHover(i)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
                 onClick={() => onChange(i)}
                 className="absolute right-0 top-0 z-10 h-full w-1/2 cursor-pointer"
               />

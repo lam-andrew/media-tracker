@@ -53,6 +53,8 @@ export function ItemTracker({
       await fn();
       setSavedTick(true);
       setTimeout(() => setSavedTick(false), 1500);
+    } catch (err) {
+      toast(`Couldn't save: ${(err as Error).message}`, "error");
     } finally {
       setSaving(false);
     }

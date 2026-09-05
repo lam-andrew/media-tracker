@@ -40,6 +40,7 @@ function LibraryCard({ item }: { item: LibraryItem }) {
       toast(next ? "Added to favorites" : "Removed from favorites", "success");
     } catch {
       setFavorite(!next);
+      toast("Couldn't update favorite — try again", "error");
     } finally {
       setBusy(false);
     }

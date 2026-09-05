@@ -86,6 +86,14 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-screen">
+      {/* Keyboard users can jump past the sidebar; visible only when focused. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:text-surface"
+      >
+        Skip to content
+      </a>
+
       {/* Sidebar — desktop */}
       <aside className="hidden w-60 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
         <Link
@@ -139,8 +147,10 @@ export function DashboardShell({
             <ThemeToggle />
             <button
               type="button"
-              aria-label="Notifications"
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-muted transition-colors hover:border-border-strong hover:text-ink"
+              disabled
+              title="Notifications — coming soon"
+              aria-label="Notifications (coming soon)"
+              className="flex h-8 w-8 cursor-not-allowed items-center justify-center rounded-md border border-border bg-surface text-muted opacity-60"
             >
               <Bell size={16} />
             </button>
@@ -215,7 +225,9 @@ export function DashboardShell({
           </nav>
         ) : null}
 
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main id="main" className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          {children}
+        </main>
       </div>
     </div>
   );

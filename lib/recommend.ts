@@ -144,6 +144,10 @@ export function buildFeed(
 const UA = `${BRAND.name}/0.1 (media-tracker)`;
 const OL_FIELDS =
   "key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn";
+// A straggling provider must not hold the whole row hostage: each call is
+// bounded, and a timed-out seed simply contributes nothing.
+const FETCH_TIMEOUT_MS = 4000;
+const bounded = () => AbortSignal.timeout(FETCH_TIMEOUT_MS);
 
 async function tmdbSimilar(
   kind: "movie" | "tv",
@@ -159,6 +163,7 @@ async function tmdbSimilar(
           Authorization: `Bearer ${token}`,
           accept: "application/json",
         },
+        signal: bounded(),
       },
     );
     if (!res.ok) return [];
@@ -182,6 +187,7 @@ async function rawgSimilar(id: string): Promise<NormalizedItem[]> {
     // sharing this game's genres (the /games list is free).
     const detailRes = await fetch(
       `https://api.rawg.io/api/games/${id}?key=${key}`,
+      { signal: bounded() },
     );
     if (!detailRes.ok) return [];
     const detail = (await detailRes.json()) as { genres?: { id: number }[] };
@@ -189,6 +195,7 @@ async function rawgSimilar(id: string): Promise<NormalizedItem[]> {
     if (genreIds.length === 0) return [];
     const res = await fetch(
       `https://api.rawg.io/api/games?key=${key}&genres=${genreIds.join(",")}&ordering=-added&page_size=12`,
+      { signal: bounded() },
     );
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -204,7 +211,7 @@ async function olSearch(params: string): Promise<NormalizedItem[]> {
   try {
     const res = await fetch(
       `https://openlibrary.org/search.json?${params}&fields=${OL_FIELDS}&limit=8`,
-      { headers: { "User-Agent": UA } },
+      { headers: { "User-Agent": UA }, signal: bounded() },
     );
     if (!res.ok) return [];
     const data = (await res.json()) as {

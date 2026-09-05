@@ -165,7 +165,9 @@ export default function LoginPage() {
             </button>
           ) : (
             <>
-              {mode === "signin" ? "New to Marqd?" : "Already have an account?"}{" "}
+              {mode === "signin"
+                ? `New to ${BRAND.name}?`
+                : "Already have an account?"}{" "}
               <button
                 type="button"
                 onClick={() => setMode(mode === "signin" ? "signup" : "signin")}

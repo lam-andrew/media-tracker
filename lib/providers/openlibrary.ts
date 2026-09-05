@@ -1,4 +1,5 @@
 import type { MetadataProvider, NormalizedItem } from "./types";
+import { BRAND } from "@/lib/brand";
 
 /**
  * Open Library provider (books). No API key required.
@@ -8,7 +9,7 @@ import type { MetadataProvider, NormalizedItem } from "./types";
 const SEARCH_URL = "https://openlibrary.org/search.json";
 const FIELDS =
   "key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn";
-const UA = "Marqd/0.1 (media-tracker)";
+const UA = `${BRAND.name}/0.1 (media-tracker)`;
 
 export interface OpenLibraryDoc {
   key: string; // e.g. "/works/OL45804W"
