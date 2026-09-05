@@ -31,3 +31,4 @@ an architecturally significant decision, its context, and its consequences.
 | [0009](0009-supabase-auth-multi-user.md) | Supabase Auth for multi-user (Google OAuth + email/password) | Accepted |
 | [0010](0010-cookie-session-identity-no-per-request-auth-roundtrip.md) | Request identity from the session cookie, not a per-request auth round-trip | Accepted |
 | [0011](0011-stats-and-yearly-goals.md) | Stats computed in-app; yearly goals in a gated `user_goals` table | Accepted |
+| [0012](0012-book-provider-open-library-primary-google-books-backup.md) | Book metadata: Open Library primary, Google Books backup (composite provider) | Accepted |

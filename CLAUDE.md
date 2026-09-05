@@ -116,24 +116,42 @@ document routine coding choices — that creates noise, not signal.
 
 ## Current status
 
-**Done and on `main` (CI green):**
+**Live:** https://media-tracker-two-plum.vercel.app (Vercel Git integration; `main` auto-deploys).
+CI green on `main`. ADRs 0001–0012.
 
-- Scaffold + full docs/CI-CD standards (this file, README, CONTRIBUTING, C4 diagrams, ADRs 0001–0007).
-- Design system: **Literary light** + a **Warm dark** twin, with a persisted sun/moon theme toggle
-  (`components/theme-toggle.tsx`; no-flash script in `app/layout.tsx`). Tokens in `app/globals.css`.
-- Generic media engine: `supabase/schema.sql` (`media_items` + `user_items`), lazy Supabase admin
-  client, `lib/media-config.ts`, providers for Open Library / TMDB (movie+tv) / RAWG behind one
-  interface (`lib/providers/`), and `GET /api/search?type=&q=`. Mapper unit tests pass.
-- Search UI (`/search`): media-type selector, debounced live search, results in three
-  **user-selectable, persisted** layouts (grid / rows / cards). `addToLibrary` server action is
-  code-complete. Verified live: book search returns real Open Library results.
+**Done and on `main`:**
 
-**Blocked on the user (🧑):** create a Supabase project + get TMDB and RAWG keys, fill `.env.local`
-(see `.env.example`), and run `supabase/schema.sql` in Supabase. That turns on: Add-to-library
-saving, and movie/TV/game search.
+- Design system (Literary light + Warm dark, persisted toggle), sidebar shell, toasts, branded
+  404s and an in-shell error boundary, keyboard focus ring + reduced-motion, skip link.
+- Generic media engine + providers behind one interface: Open Library (primary) with Google
+  Books as backup for books, TMDB (movie + TV), RAWG (games). `GET /api/search` (rate-limited).
+- **Auth (multi-user):** Supabase Auth — Google OAuth + email/password, password reset, delete
+  account; RLS scopes every row to `auth.uid()`. Hot-path identity comes from the session cookie
+  (no per-request auth round-trip) — see **ADR 0010**; `getUser()` only where identity must be
+  proven (admin-client deletes, Settings).
+- **Library:** poster grid, type tabs, status chips, sort (added/rating/title/year), instant text
+  filter (URL-synced via History API), favorites, item page with status / half-star rating /
+  progress / notes and streamed provider enrichment (page is interactive before slow providers
+  answer). `loading.tsx` skeletons on every data page.
+- **Discover:** cross-media recommendations with reasons ("Because you loved …"), direct
+  add-to-library from the card, per-seed rows; cold-start "popular reads" row.
+- **Stats & goals** (`/stats`): in-app aggregation (ADR 0011) + yearly goals in `user_goals`
+  (migration `supabase/migrations/0002-user-goals.sql`; the page shows a one-line setup notice
+  until it's run).
+- **Imports** (`/import`): Goodreads + Letterboxd CSV → parse client-side → match via providers
+  (ISBN-first for books) → bulk commit with status/rating/dates; never overwrites existing rows.
 
-**Next build steps (after keys):** the **library page** (home — saved items as a poster grid,
-type filter) and **item tracking** (status / half-star rating / progress / notes) — `docs/BUILD.md`
-M5–M7. Then accounts/auth, imports, recommendations, deploy (Vercel).
+**Performance rule (learned the hard way, ADR 0010):** never add a `supabase.auth.getUser()` to a
+hot path — it's a network round-trip (~80–190 ms from Vercel). Use `getSessionUser()`. Middleware
+exposes a `Server-Timing: session` header for measuring. Measure before theorizing.
 
-> Dev server: `npm run dev -- -p 3100` (port 3000 is a different project). No public deploy yet.
+**🧑 One-time user steps still pending:** run migration `0002-user-goals.sql` (enables goals);
+optional `GOOGLE_BOOKS_API_KEY` (makes Google Books usable as the fast primary — flip the order
+in `lib/providers/book.ts`).
+
+**Backlog (not started):** email/SMTP activation, custom domain, durable rate limiting,
+affiliate/"where to watch", public shareable lists, more media types (music/podcasts/places),
+and the parked **shelf view** (refs in `docs/PLAN.md`).
+
+> Local: `npm run dev -- -p 3100` (port 3000 is a different project). A production build can
+> be previewed with `npm run start -- -p 3101`.
