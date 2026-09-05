@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { BRAND } from "@/lib/brand";
 import type { NormalizedItem } from "@/lib/providers/types";
 import { mapOpenLibraryDoc } from "@/lib/providers/openlibrary";
 import { mapTmdbMovie, mapTmdbTv } from "@/lib/providers/tmdb";
@@ -6,23 +7,143 @@ import { mapRawgGame } from "@/lib/providers/rawg";
 
 /**
  * Content-based, cross-media recommendations built from what the user has loved
- * (favorited, rated 4+, or completed). For each loved item we ask its own source
- * for "more like this" — TMDB recommendations, RAWG suggested, and more-by-author
- * for books — then merge into one mixed feed, scoring by how often something is
- * suggested and dropping anything already in the library.
+ * (favorited, rated 4+, or completed). Each loved item is a *seed*: we ask its
+ * source for "more like this" — TMDB recommendations, RAWG genre matches, and
+ * for books both more-by-author and more-in-subject — then build two views:
+ *
+ * - `forYou`: one mixed feed scored by how often something is suggested,
+ *   round-robined across media types so no single type floods it, each entry
+ *   carrying the seed that explains it ("Because you loved …").
+ * - `bySeed`: a row per seed with what's left after `forYou` took its picks,
+ *   so the same title never shows twice on the page.
+ *
+ * Everything already in the library is excluded. `buildFeed` is pure and tested;
+ * the fetchers around it are best-effort and never throw.
  */
 
-type LovedRow = {
-  media_items: {
-    type: string;
-    external_source: string;
-    external_id: string;
-    creators: string[] | null;
-  } | null;
+export interface Seed {
+  title: string;
+  type: string;
+  externalSource: string;
+  externalId: string;
+  creators: string[];
+  genres: string[];
+}
+
+export interface Recommendation {
+  item: NormalizedItem;
+  because: string; // seed title
+  score: number;
+}
+
+export interface RecommendationFeed {
+  forYou: Recommendation[];
+  bySeed: { seed: Seed; items: NormalizedItem[] }[];
+}
+
+export interface FeedOptions {
+  limit: number; // forYou size
+  rowSize: number; // max items per bySeed row
+  minRow: number; // drop rows thinner than this
+  maxRows: number;
+}
+
+const DEFAULT_FEED: FeedOptions = {
+  limit: 12,
+  rowSize: 8,
+  minRow: 3,
+  maxRows: 3,
 };
-type OwnedRow = {
-  media_items: { external_source: string; external_id: string } | null;
-};
+
+const keyOf = (i: { externalSource: string; externalId: string }) =>
+  `${i.externalSource}:${i.externalId}`;
+
+/** Pure: turn per-seed suggestion batches into the two feed views. */
+export function buildFeed(
+  seeds: Seed[],
+  batches: NormalizedItem[][],
+  owned: Set<string>,
+  opts: FeedOptions = DEFAULT_FEED,
+): RecommendationFeed {
+  const seedKeys = new Set(seeds.map(keyOf));
+  const usable = (item: NormalizedItem) => {
+    const k = keyOf(item);
+    return Boolean(item.imageUrl) && !owned.has(k) && !seedKeys.has(k);
+  };
+
+  // Score by how many seeds suggested each title; remember the seeds (in order).
+  const scored = new Map<
+    string,
+    { item: NormalizedItem; score: number; seeds: string[] }
+  >();
+  batches.forEach((batch, idx) => {
+    const seedTitle = seeds[idx]?.title ?? "";
+    for (const item of batch) {
+      if (!usable(item)) continue;
+      const k = keyOf(item);
+      const entry = scored.get(k);
+      if (entry) {
+        entry.score += 1;
+        if (!entry.seeds.includes(seedTitle)) entry.seeds.push(seedTitle);
+      } else {
+        scored.set(k, { item, score: 1, seeds: [seedTitle] });
+      }
+    }
+  });
+
+  // Group by media type and round-robin so the feed stays truly cross-media.
+  const byType = new Map<
+    string,
+    (typeof scored extends Map<string, infer V> ? V : never)[]
+  >();
+  for (const entry of scored.values()) {
+    const list = byType.get(entry.item.type) ?? [];
+    list.push(entry);
+    byType.set(entry.item.type, list);
+  }
+  for (const list of byType.values()) list.sort((a, b) => b.score - a.score);
+
+  const typeLists = [...byType.values()];
+  const forYou: Recommendation[] = [];
+  let i = 0;
+  while (forYou.length < opts.limit && typeLists.some((l) => l.length > 0)) {
+    const next = typeLists[i % typeLists.length].shift();
+    if (next) {
+      forYou.push({
+        item: next.item,
+        because: next.seeds[0],
+        score: next.score,
+      });
+    }
+    i += 1;
+  }
+
+  // Per-seed rows from what's left; an item appears at most once on the page.
+  const used = new Set(forYou.map((r) => keyOf(r.item)));
+  const bySeed: RecommendationFeed["bySeed"] = [];
+  for (let s = 0; s < seeds.length && bySeed.length < opts.maxRows; s += 1) {
+    const items: NormalizedItem[] = [];
+    for (const item of batches[s] ?? []) {
+      const k = keyOf(item);
+      if (!usable(item) || used.has(k)) continue;
+      used.add(k);
+      items.push(item);
+      if (items.length >= opts.rowSize) break;
+    }
+    if (items.length >= opts.minRow) bySeed.push({ seed: seeds[s], items });
+    else for (const item of items) used.delete(keyOf(item)); // give them back
+  }
+
+  return { forYou, bySeed };
+}
+
+// ---------------------------------------------------------------------------
+// Fetchers (best-effort; each returns [] on any failure)
+// ---------------------------------------------------------------------------
+
+const UA = `${BRAND.name}/0.1 (media-tracker)`;
+const OL_FIELDS =
+  "key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn";
 
 async function tmdbSimilar(
   kind: "movie" | "tv",
@@ -43,12 +164,11 @@ async function tmdbSimilar(
     if (!res.ok) return [];
     const data = (await res.json()) as { results?: unknown[] };
     const results = data.results ?? [];
-    if (kind === "movie") {
-      return results.map((r) =>
-        mapTmdbMovie(r as Parameters<typeof mapTmdbMovie>[0]),
-      );
-    }
-    return results.map((r) => mapTmdbTv(r as Parameters<typeof mapTmdbTv>[0]));
+    return kind === "movie"
+      ? results.map((r) =>
+          mapTmdbMovie(r as Parameters<typeof mapTmdbMovie>[0]),
+        )
+      : results.map((r) => mapTmdbTv(r as Parameters<typeof mapTmdbTv>[0]));
   } catch {
     return [];
   }
@@ -80,14 +200,11 @@ async function rawgSimilar(id: string): Promise<NormalizedItem[]> {
   }
 }
 
-async function olByAuthor(
-  author: string | undefined,
-): Promise<NormalizedItem[]> {
-  if (!author) return [];
+async function olSearch(params: string): Promise<NormalizedItem[]> {
   try {
     const res = await fetch(
-      `https://openlibrary.org/search.json?author=${encodeURIComponent(author)}&fields=key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn&limit=8`,
-      { headers: { "User-Agent": "Marqd/0.1 (media-tracker)" } },
+      `https://openlibrary.org/search.json?${params}&fields=${OL_FIELDS}&limit=8`,
+      { headers: { "User-Agent": UA } },
     );
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -101,20 +218,87 @@ async function olByAuthor(
   }
 }
 
-export async function getRecommendations(
-  limit = 12,
-): Promise<NormalizedItem[]> {
+async function booksLike(seed: Seed): Promise<NormalizedItem[]> {
+  const author = seed.creators[0];
+  const subject = seed.genres[0];
+  const [byAuthor, bySubject] = await Promise.all([
+    author ? olSearch(`author=${encodeURIComponent(author)}`) : [],
+    subject
+      ? olSearch(`subject=${encodeURIComponent(subject)}&sort=rating`)
+      : [],
+  ]);
+  return [...byAuthor, ...bySubject];
+}
+
+function similarFor(seed: Seed): Promise<NormalizedItem[]> {
+  if (seed.type === "book") return booksLike(seed);
+  if (seed.externalSource === "tmdb" && seed.type === "movie")
+    return tmdbSimilar("movie", seed.externalId);
+  if (seed.externalSource === "tmdb" && seed.type === "tv")
+    return tmdbSimilar("tv", seed.externalId);
+  if (seed.externalSource === "rawg") return rawgSimilar(seed.externalId);
+  return Promise.resolve([]);
+}
+
+// ---------------------------------------------------------------------------
+
+type LovedRow = {
+  rating: number | null;
+  favorite: boolean | null;
+  updated_at: string | null;
+  media_items: {
+    title: string;
+    type: string;
+    external_source: string;
+    external_id: string;
+    creators: string[] | null;
+    metadata: Record<string, unknown> | null;
+  } | null;
+};
+type OwnedRow = {
+  media_items: { external_source: string; external_id: string } | null;
+};
+
+const MAX_SEEDS = 8;
+
+/** The signed-in user's recommendation feed (RLS scopes the reads). */
+export async function getRecommendationFeed(): Promise<RecommendationFeed> {
   const supabase = await createClient();
 
   const { data: lovedData } = await supabase
     .from("user_items")
-    .select("media_items(type, external_source, external_id, creators)")
+    .select(
+      "rating, favorite, updated_at, media_items(title, type, external_source, external_id, creators, metadata)",
+    )
     .or("favorite.eq.true,rating.gte.4,status.eq.completed")
-    .limit(12);
-  const loved = ((lovedData as unknown as LovedRow[] | null) ?? [])
-    .map((r) => r.media_items)
-    .filter((m): m is NonNullable<LovedRow["media_items"]> => Boolean(m));
-  if (loved.length === 0) return [];
+    .limit(24);
+  const lovedRows = ((lovedData as unknown as LovedRow[] | null) ?? []).filter(
+    (
+      r,
+    ): r is LovedRow & { media_items: NonNullable<LovedRow["media_items"]> } =>
+      Boolean(r.media_items),
+  );
+  if (lovedRows.length === 0) return { forYou: [], bySeed: [] };
+
+  // Favorites first, then highest rated, then most recently touched.
+  lovedRows.sort(
+    (a, b) =>
+      Number(b.favorite) - Number(a.favorite) ||
+      (b.rating ?? 0) - (a.rating ?? 0) ||
+      (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
+  );
+  const seeds: Seed[] = lovedRows.slice(0, MAX_SEEDS).map((r) => ({
+    title: r.media_items.title,
+    type: r.media_items.type,
+    externalSource: r.media_items.external_source,
+    externalId: r.media_items.external_id,
+    creators: r.media_items.creators ?? [],
+    genres: Array.isArray(r.media_items.metadata?.genres)
+      ? (r.media_items.metadata!.genres as unknown[]).filter(
+          (g): g is string => typeof g === "string",
+        )
+      : [],
+  }));
 
   const { data: ownedData } = await supabase
     .from("user_items")
@@ -122,52 +306,10 @@ export async function getRecommendations(
   const owned = new Set(
     ((ownedData as unknown as OwnedRow[] | null) ?? [])
       .map((r) => r.media_items)
-      .filter(Boolean)
-      .map((m) => `${m!.external_source}:${m!.external_id}`),
+      .filter((m): m is NonNullable<OwnedRow["media_items"]> => Boolean(m))
+      .map((m) => `${m.external_source}:${m.external_id}`),
   );
 
-  const sample = loved.slice(0, 6);
-  const batches = await Promise.all(
-    sample.map((m) => {
-      if (m.external_source === "tmdb" && m.type === "movie")
-        return tmdbSimilar("movie", m.external_id);
-      if (m.external_source === "tmdb" && m.type === "tv")
-        return tmdbSimilar("tv", m.external_id);
-      if (m.external_source === "rawg") return rawgSimilar(m.external_id);
-      if (m.external_source === "openlibrary")
-        return olByAuthor(m.creators?.[0]);
-      return Promise.resolve([]);
-    }),
-  );
-
-  const scored = new Map<string, { item: NormalizedItem; score: number }>();
-  for (const batch of batches) {
-    for (const item of batch) {
-      const key = `${item.externalSource}:${item.externalId}`;
-      if (owned.has(key) || !item.imageUrl) continue;
-      const existing = scored.get(key);
-      if (existing) existing.score += 1;
-      else scored.set(key, { item, score: 1 });
-    }
-  }
-
-  // Group by media type and round-robin across types so the feed stays truly
-  // cross-media (otherwise one prolific type — e.g. games — fills every slot).
-  const byType = new Map<string, { item: NormalizedItem; score: number }[]>();
-  for (const entry of scored.values()) {
-    const list = byType.get(entry.item.type) ?? [];
-    list.push(entry);
-    byType.set(entry.item.type, list);
-  }
-  for (const list of byType.values()) list.sort((a, b) => b.score - a.score);
-
-  const typeLists = [...byType.values()];
-  const result: NormalizedItem[] = [];
-  let i = 0;
-  while (result.length < limit && typeLists.some((l) => l.length > 0)) {
-    const next = typeLists[i % typeLists.length].shift();
-    if (next) result.push(next.item);
-    i += 1;
-  }
-  return result;
+  const batches = await Promise.all(seeds.map(similarFor));
+  return buildFeed(seeds, batches, owned);
 }

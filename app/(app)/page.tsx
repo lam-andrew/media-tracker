@@ -4,10 +4,10 @@ import { BookOpen, Film, Tv, Gamepad2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { bookProvider } from "@/lib/providers/book";
 import type { NormalizedItem } from "@/lib/providers/types";
-import { MEDIA_TYPES, getConfig } from "@/lib/media-config";
-import { getRecommendations } from "@/lib/recommend";
+import { MEDIA_TYPES } from "@/lib/media-config";
+import { getRecommendationFeed } from "@/lib/recommend";
 import { DiscoverSearch } from "@/components/dashboard/discover-search";
-import { Cover } from "@/components/media/cover";
+import { RecRow } from "@/components/discover/rec-row";
 
 export const dynamic = "force-dynamic";
 
@@ -46,47 +46,37 @@ function RecSkeleton() {
 }
 
 async function Recommendations() {
-  const personalized = await getRecommendations();
-  const personalizedMode = personalized.length > 0;
-  const items = personalizedMode ? personalized : await getPopularBooks();
+  const feed = await getRecommendationFeed();
 
-  if (items.length === 0) {
+  if (feed.forYou.length === 0) {
+    const popular = await getPopularBooks();
+    if (popular.length === 0) {
+      return (
+        <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
+          Rate or favorite a few things and recommendations will show up here.
+        </p>
+      );
+    }
     return (
-      <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-        Rate or favorite a few things and recommendations will show up here.
-      </p>
+      <RecRow
+        heading="Popular reads to get you started"
+        entries={popular.map((item) => ({ item }))}
+      />
     );
   }
 
   return (
-    <>
-      <h2 className="mb-4 font-serif text-xl text-ink">
-        {personalizedMode
-          ? "Recommended for you"
-          : "Popular reads to get you started"}
-      </h2>
-      <ul className="flex gap-4 overflow-x-auto pb-2">
-        {items.map((item) => (
-          <li
-            key={`${item.externalSource}:${item.externalId}`}
-            className="w-36 flex-shrink-0 sm:w-40"
-          >
-            <Link
-              href={`/search?type=${item.type}&q=${encodeURIComponent(item.title)}`}
-              className="block"
-            >
-              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
-                <Cover src={item.imageUrl} title={item.title} sizes="160px" />
-              </div>
-              <p className="mt-2 line-clamp-1 text-sm text-ink">{item.title}</p>
-              <p className="line-clamp-1 text-xs text-muted">
-                {item.creators[0] ?? getConfig(item.type)?.label ?? ""}
-              </p>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </>
+    <div className="space-y-10">
+      <RecRow heading="Recommended for you" entries={feed.forYou} />
+      {feed.bySeed.map((row) => (
+        <RecRow
+          key={`${row.seed.externalSource}:${row.seed.externalId}`}
+          eyebrow="Because you loved"
+          heading={row.seed.title}
+          entries={row.items.map((item) => ({ item }))}
+        />
+      ))}
+    </div>
   );
 }
 

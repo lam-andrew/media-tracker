@@ -40,7 +40,8 @@ function AddButton({ added, adding, onAdd }: AddState) {
   );
 }
 
-function CornerAdd({ added, adding, onAdd }: AddState) {
+/** Poster-corner add button; shared with the Discover recommendation rows. */
+export function CornerAdd({ added, adding, onAdd }: AddState) {
   return (
     <button
       type="button"
