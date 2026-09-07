@@ -3,8 +3,9 @@ import { createServerClient } from "@supabase/ssr";
 import { decodeJwtPayload, isJwtExpired } from "@/lib/jwt";
 
 /**
- * Gates access on every request: signed-out visitors go to /login; signed-in
- * visitors are kept out of /login.
+ * Gates access on every request: signed-out visitors see the landing page at
+ * "/" and are sent to /login elsewhere; signed-in visitors are kept out of
+ * /login and /welcome.
  *
  * Deliberately reads the session from the cookie instead of calling
  * `auth.getUser()` — that is a network round-trip to Supabase (~80–190ms from
@@ -52,8 +53,20 @@ export async function middleware(request: NextRequest) {
   const timing = `session;dur=${(performance.now() - t0).toFixed(1)}`;
 
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith("/login") || path.startsWith("/auth");
+  const isPublic =
+    path.startsWith("/login") ||
+    path.startsWith("/auth") ||
+    path.startsWith("/welcome");
 
+  // Signed-out visitors at the root see the landing page (URL stays "/").
+  if (!user && path === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/welcome";
+    const rewrite = NextResponse.rewrite(url);
+    response.cookies.getAll().forEach((c) => rewrite.cookies.set(c));
+    rewrite.headers.set("Server-Timing", timing);
+    return rewrite;
+  }
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -61,7 +74,7 @@ export async function middleware(request: NextRequest) {
     redirect.headers.set("Server-Timing", timing);
     return redirect;
   }
-  if (user && path.startsWith("/login")) {
+  if (user && (path.startsWith("/login") || path.startsWith("/welcome"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     const redirect = NextResponse.redirect(url);

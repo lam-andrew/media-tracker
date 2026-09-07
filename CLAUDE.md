@@ -121,6 +121,9 @@ CI green on `main`. ADRs 0001–0012.
 
 **Done and on `main`:**
 
+- **Landing page** (`/welcome`, static; signed-out `/` is rewritten to it by the middleware, signed-in
+  `/welcome` → `/`): hero with a real-cover mosaic, six-card feature bento with a live-rendered
+  library mock, how-it-works, FAQ (TMDB attribution), final CTA. `/login?mode=signup` opens signup.
 - Design system (Literary light + Warm dark, persisted toggle), sidebar shell, toasts, branded
   404s and an in-shell error boundary, keyboard focus ring + reduced-motion, skip link.
 - Generic media engine + providers behind one interface: Open Library (primary) with Google
