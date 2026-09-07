@@ -145,3 +145,42 @@ export async function getItem(userItemId: string): Promise<ItemDetail | null> {
     metadata: row.media_items.metadata ?? {},
   };
 }
+
+/** "source:externalId" → user_items.id for everything in the user's library. */
+export async function getOwnedMap(): Promise<Record<string, string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_items")
+    .select("id, media_items(external_source, external_id)");
+  if (error) throw new Error(error.message);
+  const rows = (data as unknown as OwnedRow[] | null) ?? [];
+  const map: Record<string, string> = {};
+  for (const r of rows) {
+    if (r.media_items) {
+      map[`${r.media_items.external_source}:${r.media_items.external_id}`] =
+        r.id;
+    }
+  }
+  return map;
+}
+
+type OwnedRow = {
+  id: string;
+  media_items: { external_source: string; external_id: string } | null;
+};
+
+/** The user's tracking-row id for one external item, or null if not in their library. */
+export async function findOwnedId(
+  externalSource: string,
+  externalId: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_items")
+    .select("id, media_items!inner(external_source, external_id)")
+    .eq("media_items.external_source", externalSource)
+    .eq("media_items.external_id", externalId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: string } | null)?.id ?? null;
+}

@@ -46,6 +46,37 @@ export function mapOpenLibraryDoc(doc: OpenLibraryDoc): NormalizedItem {
   };
 }
 
+const MAX_AUTHORS = 3;
+
+/**
+ * Work records reference authors by key only; resolve the first few names
+ * (in parallel, bounded, best-effort) so detail views can credit and link them.
+ */
+async function authorNames(
+  refs: { author?: { key?: string } }[] | undefined,
+): Promise<string[]> {
+  const keys = (refs ?? [])
+    .map((r) => r.author?.key)
+    .filter((k): k is string => typeof k === "string")
+    .slice(0, MAX_AUTHORS);
+  const names = await Promise.all(
+    keys.map(async (key) => {
+      try {
+        const res = await fetch(`https://openlibrary.org${key}.json`, {
+          headers: { "User-Agent": UA },
+          signal: AbortSignal.timeout(2500),
+        });
+        if (!res.ok) return null;
+        const a = (await res.json()) as { name?: string };
+        return a.name ?? null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return names.filter((n): n is string => Boolean(n));
+}
+
 export const openLibraryProvider: MetadataProvider = {
   type: "book",
 
@@ -83,6 +114,7 @@ export const openLibraryProvider: MetadataProvider = {
       covers?: number[];
       description?: string | { value?: string };
       subjects?: string[];
+      authors?: { author?: { key?: string } }[];
     };
     const description =
       typeof work.description === "string"
@@ -93,7 +125,7 @@ export const openLibraryProvider: MetadataProvider = {
       externalId,
       type: "book",
       title: work.title ?? "Untitled",
-      creators: [],
+      creators: await authorNames(work.authors),
       imageUrl: coverUrl(work.covers?.[0]),
       releaseYear: null,
       metadata: {

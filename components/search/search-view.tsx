@@ -31,11 +31,14 @@ export function SearchView({
   initialType = "book",
   initialQuery = "",
   initialCreator = "",
+  owned: initialOwned = {},
 }: {
   initialType?: string;
   initialQuery?: string;
   /** Show everything this person/studio made instead of a text search. */
   initialCreator?: string;
+  /** "source:id" → user_items.id for what's already in the library. */
+  owned?: Record<string, string>;
 }) {
   const [type, setType] = useState<string>(initialType);
   const [query, setQuery] = useState(initialQuery);
@@ -45,7 +48,7 @@ export function SearchView({
   const [error, setError] = useState<string | null>(null);
 
   const [layout, setLayout] = useState<Layout>("rows");
-  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+  const [owned, setOwned] = useState<Record<string, string>>(initialOwned);
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -121,8 +124,8 @@ export function SearchView({
     setAddingKey(key);
     setAddError(null);
     try {
-      await addToLibrary(item, "backlog");
-      setAddedKeys((prev) => new Set(prev).add(key));
+      const { id } = await addToLibrary(item, "backlog");
+      setOwned((prev) => ({ ...prev, [key]: id }));
       toast("Added to your library", "success");
     } catch (err) {
       setAddError((err as Error).message);
@@ -217,7 +220,7 @@ export function SearchView({
         <Results
           items={results}
           layout={layout}
-          addedKeys={addedKeys}
+          owned={owned}
           addingKey={addingKey}
           onAdd={onAdd}
         />

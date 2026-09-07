@@ -139,6 +139,10 @@ CI green on `main`. ADRs 0001–0012.
   source popularity) and near-duplicates collapsed (`lib/search-rank.ts`); games get Steam
   portrait covers (RAWG has no box art); descriptions render markdown/HTML safely
   (`lib/rich-text.ts`). Search stubs are enriched at add-time and on detail visits (write-back).
+- **Search → details:** results link to a detail preview (`/media/[type]/[id]`, provider lookup,
+  credits/genres/description/facts, "add as <status>" CTA → item page); anything already in the
+  library shows "In library → open" instead of Add (owned map loaded once per search page,
+  `getOwnedMap`) and previews redirect to the item page. `addToLibrary` returns the row id.
 - **Discover:** cross-media recommendations with reasons ("Because you loved …"), direct
   add-to-library from the card, per-seed rows; cold-start "popular reads" row.
 - **Stats & goals** (`/stats`): in-app aggregation (ADR 0011) + yearly goals in `user_goals`

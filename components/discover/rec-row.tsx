@@ -7,6 +7,7 @@ import { getConfig } from "@/lib/media-config";
 import { addToLibrary } from "@/lib/actions";
 import { Cover } from "@/components/media/cover";
 import { CornerAdd, itemKey } from "@/components/media/result-views";
+import { mediaHref } from "@/lib/search-links";
 import { useToast } from "@/components/toast/toast";
 
 export interface RecEntry {
@@ -17,8 +18,8 @@ export interface RecEntry {
 
 /**
  * A horizontal row of recommended titles. Each card can be added to the
- * library right here (no detour through search); the poster links to a search
- * for the title for anyone who wants to look first.
+ * library right here; the poster opens the detail preview for anyone who wants
+ * to look first.
  */
 export function RecRow({
   heading,
@@ -30,15 +31,15 @@ export function RecRow({
   entries: RecEntry[];
 }) {
   const { toast } = useToast();
-  const [added, setAdded] = useState<Set<string>>(new Set());
+  const [added, setAdded] = useState<Map<string, string>>(new Map());
   const [adding, setAdding] = useState<string | null>(null);
 
   async function onAdd(item: NormalizedItem) {
     const key = itemKey(item);
     setAdding(key);
     try {
-      await addToLibrary(item, "backlog");
-      setAdded((prev) => new Set(prev).add(key));
+      const { id } = await addToLibrary(item, "backlog");
+      setAdded((prev) => new Map(prev).set(key, id));
       toast("Added to your library", "success");
     } catch (err) {
       toast(`Couldn't add: ${(err as Error).message}`, "error");
@@ -63,14 +64,14 @@ export function RecRow({
             <li key={key} className="w-36 flex-shrink-0 sm:w-40">
               <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-2">
                 <Link
-                  href={`/search?type=${item.type}&q=${encodeURIComponent(item.title)}`}
+                  href={mediaHref(item.type, item.externalId)}
                   className="absolute inset-0"
-                  aria-label={`Look up ${item.title}`}
+                  aria-label={`View ${item.title}`}
                 >
                   <Cover src={item.imageUrl} title={item.title} sizes="160px" />
                 </Link>
                 <CornerAdd
-                  added={added.has(key)}
+                  ownedId={added.get(key)}
                   adding={adding === key}
                   onAdd={() => onAdd(item)}
                 />

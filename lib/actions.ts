@@ -36,7 +36,7 @@ async function requireUserClient() {
 export async function addToLibrary(
   item: NormalizedItem,
   status: Status = "backlog",
-): Promise<{ ok: true }> {
+): Promise<{ ok: true; id: string }> {
   const { supabase, user } = await requireUserClient();
   // Search results are thin stubs; fill them in once now (bounded, best-effort)
   // so the library shows real creators and proper artwork.
@@ -72,8 +72,17 @@ export async function addToLibrary(
     );
 
   if (userErr) throw new Error(userErr.message);
+
+  // Return the tracking row (existing or new) so callers can link straight to it.
+  const { data: row, error: rowErr } = await supabase
+    .from("user_items")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("media_item_id", media.id)
+    .single();
+  if (rowErr || !row) throw new Error(rowErr?.message ?? "Failed to save.");
   revalidatePath("/library");
-  return { ok: true };
+  return { ok: true, id: row.id };
 }
 
 /** Update one of the user's tracking rows; RLS ensures it's theirs. */
