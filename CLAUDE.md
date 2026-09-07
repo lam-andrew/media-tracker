@@ -133,6 +133,12 @@ CI green on `main`. ADRs 0001–0012.
   filter (URL-synced via History API), favorites, item page with status / half-star rating /
   progress / notes and streamed provider enrichment (page is interactive before slow providers
   answer). `loading.tsx` skeletons on every data page.
+- **Creators & search quality:** every item carries creators (authors; directors + top cast via
+  TMDB credits; developers/publishers via RAWG) with links to "works by" searches
+  (`/search?type=&creator=`, provider `byCreator`); results are ranked (exact title → has art →
+  source popularity) and near-duplicates collapsed (`lib/search-rank.ts`); games get Steam
+  portrait covers (RAWG has no box art); descriptions render markdown/HTML safely
+  (`lib/rich-text.ts`). Search stubs are enriched at add-time and on detail visits (write-back).
 - **Discover:** cross-media recommendations with reasons ("Because you loved …"), direct
   add-to-library from the card, per-seed rows; cold-start "popular reads" row.
 - **Stats & goals** (`/stats`): in-app aggregation (ADR 0011) + yearly goals in `user_goals`

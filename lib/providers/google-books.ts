@@ -26,6 +26,7 @@ interface GVolume {
     categories?: string[];
     industryIdentifiers?: { type: string; identifier: string }[];
     imageLinks?: { thumbnail?: string; smallThumbnail?: string };
+    ratingsCount?: number;
   };
 }
 
@@ -53,6 +54,7 @@ function mapVolume(v: GVolume): NormalizedItem {
       genres: info.categories ?? [],
       pageCount: info.pageCount ?? null,
       isbn,
+      popularity: info.ratingsCount ?? null,
     },
   };
 }
@@ -65,6 +67,18 @@ export const googleBooksProvider: MetadataProvider = {
       `${BASE}?q=${encodeURIComponent(query)}&maxResults=20&printType=books${keyParam("&")}`,
     );
     if (!res.ok) throw new Error(`Google Books search failed: ${res.status}`);
+    const data = (await res.json()) as { items?: GVolume[] };
+    return (data.items ?? []).filter((v) => v.volumeInfo?.title).map(mapVolume);
+  },
+
+  async byCreator(name: string): Promise<NormalizedItem[]> {
+    const q = encodeURIComponent(`inauthor:"${name}"`);
+    const res = await fetch(
+      `${BASE}?q=${q}&maxResults=20&printType=books${keyParam("&")}`,
+    );
+    if (!res.ok) {
+      throw new Error(`Google Books author search failed: ${res.status}`);
+    }
     const data = (await res.json()) as { items?: GVolume[] };
     return (data.items ?? []).filter((v) => v.volumeInfo?.title).map(mapVolume);
   },

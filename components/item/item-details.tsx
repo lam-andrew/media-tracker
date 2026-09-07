@@ -1,20 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import Link from "next/link";
 import type { DetailInfo } from "@/lib/media-detail";
+import { creatorHref } from "@/lib/search-links";
+import { RichText } from "@/components/item/rich-text";
 
 /**
- * Genres, description, and type-specific facts for an item. The detail page
- * renders this twice: instantly from the metadata cached at add-time, then
+ * Credits, genres, description, and type-specific facts for an item. The detail
+ * page renders this twice: instantly from the metadata cached at add-time, then
  * again with live provider data once it streams in (see item/[id]/page.tsx) —
  * so the page never waits on a slow provider to become interactive.
  */
-export function ItemDetails({ detail }: { detail: DetailInfo }) {
+export function ItemDetails({
+  type,
+  detail,
+}: {
+  type: string;
+  detail: DetailInfo;
+}) {
   const [expanded, setExpanded] = useState(false);
   const longDescription = (detail.description?.length ?? 0) > 280;
 
   return (
     <>
+      {detail.credits.length ? (
+        <dl className="mt-2 space-y-0.5 text-sm">
+          {detail.credits.map((c) => (
+            <div key={c.label} className="flex flex-wrap gap-x-1.5">
+              <dt className="text-muted">{c.label}</dt>
+              <dd className="text-ink">
+                {c.names.map((name, i) => (
+                  <Fragment key={name}>
+                    {i > 0 ? ", " : null}
+                    <Link
+                      href={creatorHref(type, name)}
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {name}
+                    </Link>
+                  </Fragment>
+                ))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
       {detail.genres.length ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {detail.genres.map((g) => (
@@ -30,11 +62,10 @@ export function ItemDetails({ detail }: { detail: DetailInfo }) {
 
       {detail.description ? (
         <div className="mt-4">
-          <p
+          <RichText
+            text={detail.description}
             className={`text-sm leading-relaxed text-muted ${expanded ? "" : "line-clamp-5"}`}
-          >
-            {detail.description}
-          </p>
+          />
           {longDescription ? (
             <button
               type="button"

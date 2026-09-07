@@ -8,6 +8,7 @@ import {
   Gamepad2,
   Search as SearchIcon,
   Loader2,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { MEDIA_TYPES } from "@/lib/media-config";
@@ -29,12 +30,16 @@ type SearchStatus = "idle" | "loading" | "done" | "error";
 export function SearchView({
   initialType = "book",
   initialQuery = "",
+  initialCreator = "",
 }: {
   initialType?: string;
   initialQuery?: string;
+  /** Show everything this person/studio made instead of a text search. */
+  initialCreator?: string;
 }) {
   const [type, setType] = useState<string>(initialType);
   const [query, setQuery] = useState(initialQuery);
+  const [creator, setCreator] = useState<string | null>(initialCreator || null);
   const [results, setResults] = useState<NormalizedItem[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +78,7 @@ export function SearchView({
   // inside timers/async callbacks, never synchronously in the effect body.
   useEffect(() => {
     const q = query.trim();
-    if (!q) {
+    if (!q && !creator) {
       const reset = setTimeout(() => {
         setResults([]);
         setStatus("idle");
@@ -82,30 +87,34 @@ export function SearchView({
       return () => clearTimeout(reset);
     }
     const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setStatus("loading");
-      try {
-        const res = await fetch(
-          `/api/search?type=${type}&q=${encodeURIComponent(q)}`,
-          { signal: controller.signal },
-        );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Search failed.");
-        setResults(data.results ?? []);
-        setStatus("done");
-        setError(null);
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return;
-        setError((err as Error).message);
-        setStatus("error");
-        setResults([]);
-      }
-    }, 300);
+    // A creator link is a deliberate click — no debounce; typing is debounced.
+    const timer = setTimeout(
+      async () => {
+        setStatus("loading");
+        try {
+          const url = creator
+            ? `/api/search?type=${type}&creator=${encodeURIComponent(creator)}`
+            : `/api/search?type=${type}&q=${encodeURIComponent(q)}`;
+          const res = await fetch(url, { signal: controller.signal });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Search failed.");
+          setResults(data.results ?? []);
+          setStatus("done");
+          setError(null);
+        } catch (err) {
+          if ((err as Error).name === "AbortError") return;
+          setError((err as Error).message);
+          setStatus("error");
+          setResults([]);
+        }
+      },
+      creator ? 0 : 300,
+    );
     return () => {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [query, type]);
+  }, [query, type, creator]);
 
   async function onAdd(item: NormalizedItem) {
     const key = itemKey(item);
@@ -158,7 +167,10 @@ export function SearchView({
         <input
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setCreator(null);
+          }}
           placeholder={`Search ${MEDIA_TYPES.find((t) => t.type === type)?.labelPlural.toLowerCase() ?? ""}…`}
           className="w-full bg-transparent text-ink placeholder:text-muted focus:outline-none"
           autoFocus
@@ -167,6 +179,22 @@ export function SearchView({
           <Loader2 size={16} className="animate-spin text-muted" />
         ) : null}
       </label>
+
+      {creator ? (
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+          <span>
+            Works by <span className="font-medium text-ink">{creator}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setCreator(null)}
+            aria-label="Clear creator filter"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-muted transition-colors hover:text-ink"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ) : null}
 
       {addError ? (
         <p className="mb-4 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-accent-strong">
@@ -183,7 +211,7 @@ export function SearchView({
         </p>
       ) : status === "done" && results.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted">
-          No results for &ldquo;{query.trim()}&rdquo;.
+          No results for &ldquo;{creator ?? query.trim()}&rdquo;.
         </p>
       ) : (
         <Results

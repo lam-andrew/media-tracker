@@ -3,6 +3,8 @@ export interface DetailInfo {
   description: string | null;
   genres: string[];
   facts: { label: string; value: string }[];
+  /** People/studios behind the item, grouped by role ("Directed by", "Starring"…). */
+  credits: { label: string; names: string[] }[];
 }
 
 function str(v: unknown): string | null {
@@ -21,6 +23,7 @@ function strList(v: unknown): string[] {
 export function deriveDetailInfo(
   type: string,
   metadata: Record<string, unknown>,
+  creators: string[] = [],
 ): DetailInfo {
   const description = str(metadata.description);
   const genres = strList(metadata.genres).slice(0, 6);
@@ -53,5 +56,22 @@ export function deriveDetailInfo(
     push("Metacritic", meta ? String(meta) : null);
   }
 
-  return { description, genres, facts };
+  // Role-specific credits when the provider gave them; otherwise a plain "By".
+  const credits: DetailInfo["credits"] = [];
+  const credit = (label: string, names: string[]) => {
+    if (names.length) credits.push({ label, names });
+  };
+  if (type === "movie") {
+    credit("Directed by", strList(metadata.directors));
+    credit("Starring", strList(metadata.cast));
+  } else if (type === "tv") {
+    credit("Created by", strList(metadata.createdBy));
+    credit("Starring", strList(metadata.cast));
+  } else if (type === "game") {
+    credit("Developer", strList(metadata.developers));
+    credit("Publisher", strList(metadata.publishers));
+  }
+  if (credits.length === 0) credit("By", creators);
+
+  return { description, genres, facts, credits };
 }

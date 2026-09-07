@@ -31,6 +31,18 @@ export const bookProvider: MetadataProvider = {
     return backup.search(query);
   },
 
+  async byCreator(name: string): Promise<NormalizedItem[]> {
+    const from = (p: MetadataProvider) =>
+      p.byCreator ? p.byCreator(name) : p.search(name);
+    try {
+      const items = await from(primary);
+      if (items.length > 0) return items;
+    } catch {
+      // Primary down or empty — fall through to the backup.
+    }
+    return from(backup);
+  },
+
   async getById(externalId: string): Promise<NormalizedItem | null> {
     // Route by id shape, independent of which source is primary.
     if (externalId.startsWith("/works/")) {

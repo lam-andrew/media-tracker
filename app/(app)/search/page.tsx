@@ -7,9 +7,15 @@ export const metadata: Metadata = { title: "Search" };
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; q?: string }>;
+  searchParams: Promise<{ type?: string; q?: string; creator?: string }>;
 }) {
-  const { type, q } = await searchParams;
+  const { type, q, creator } = await searchParams;
   const initialType = type && MEDIA_TYPE_KEYS.includes(type) ? type : "book";
-  return <SearchView initialType={initialType} initialQuery={q ?? ""} />;
+  return (
+    <SearchView
+      initialType={initialType}
+      initialQuery={q ?? ""}
+      initialCreator={creator ?? ""}
+    />
+  );
 }

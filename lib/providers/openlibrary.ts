@@ -8,7 +8,7 @@ import { BRAND } from "@/lib/brand";
 
 const SEARCH_URL = "https://openlibrary.org/search.json";
 const FIELDS =
-  "key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn";
+  "key,title,author_name,first_publish_year,cover_i,number_of_pages_median,isbn,edition_count";
 const UA = `${BRAND.name}/0.1 (media-tracker)`;
 
 export interface OpenLibraryDoc {
@@ -19,6 +19,7 @@ export interface OpenLibraryDoc {
   cover_i?: number;
   number_of_pages_median?: number;
   isbn?: string[];
+  edition_count?: number;
 }
 
 function coverUrl(coverId: number | undefined): string | null {
@@ -40,6 +41,7 @@ export function mapOpenLibraryDoc(doc: OpenLibraryDoc): NormalizedItem {
     metadata: {
       pageCount: doc.number_of_pages_median ?? null,
       isbn: doc.isbn?.[0] ?? null,
+      popularity: doc.edition_count ?? null,
     },
   };
 }
@@ -52,6 +54,18 @@ export const openLibraryProvider: MetadataProvider = {
     const res = await fetch(url, { headers: { "User-Agent": UA } });
     if (!res.ok) {
       throw new Error(`Open Library search failed: ${res.status}`);
+    }
+    const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
+    return (data.docs ?? [])
+      .filter((d) => d.key && d.title)
+      .map(mapOpenLibraryDoc);
+  },
+
+  async byCreator(name: string): Promise<NormalizedItem[]> {
+    const url = `${SEARCH_URL}?author=${encodeURIComponent(name)}&fields=${FIELDS}&limit=20&sort=editions`;
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) {
+      throw new Error(`Open Library author search failed: ${res.status}`);
     }
     const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
     return (data.docs ?? [])

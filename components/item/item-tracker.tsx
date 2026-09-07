@@ -95,9 +95,7 @@ export function ItemTracker({
     router.refresh();
   }
 
-  const meta = [item.creators[0], item.releaseYear, config?.label]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = [item.releaseYear, config?.label].filter(Boolean).join(" · ");
 
   return (
     <div className="mx-auto max-w-4xl">

@@ -70,6 +70,7 @@ export async function getLibrary(opts?: {
 /** A single library item with full tracking + metadata, for the detail view. */
 export interface ItemDetail {
   id: string;
+  mediaItemId: string;
   status: Status;
   rating: number | null;
   favorite: boolean;
@@ -89,6 +90,7 @@ export interface ItemDetail {
 
 type RawItemRow = {
   id: string;
+  media_item_id: string;
   status: Status;
   rating: number | null;
   favorite: boolean | null;
@@ -114,7 +116,7 @@ export async function getItem(userItemId: string): Promise<ItemDetail | null> {
   const { data, error } = await supabase
     .from("user_items")
     .select(
-      "id, status, rating, favorite, progress, notes, started_at, finished_at, media_items(type, title, image_url, release_year, creators, external_source, external_id, metadata)",
+      "id, media_item_id, status, rating, favorite, progress, notes, started_at, finished_at, media_items(type, title, image_url, release_year, creators, external_source, external_id, metadata)",
     )
     .eq("id", userItemId)
     .maybeSingle();
@@ -125,6 +127,7 @@ export async function getItem(userItemId: string): Promise<ItemDetail | null> {
 
   return {
     id: row.id,
+    mediaItemId: row.media_item_id,
     status: row.status,
     rating: row.rating,
     favorite: row.favorite ?? false,

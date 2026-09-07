@@ -22,7 +22,7 @@ describe("mapOpenLibraryDoc", () => {
       creators: ["Ursula K. Le Guin"],
       imageUrl: "https://covers.openlibrary.org/b/id/8231856-L.jpg",
       releaseYear: 1969,
-      metadata: { pageCount: 304, isbn: "0441478123" },
+      metadata: { pageCount: 304, isbn: "0441478123", popularity: null },
     });
   });
 
@@ -34,7 +34,11 @@ describe("mapOpenLibraryDoc", () => {
     expect(item.imageUrl).toBeNull();
     expect(item.creators).toEqual([]);
     expect(item.releaseYear).toBeNull();
-    expect(item.metadata).toEqual({ pageCount: null, isbn: null });
+    expect(item.metadata).toEqual({
+      pageCount: null,
+      isbn: null,
+      popularity: null,
+    });
   });
 });
 
@@ -89,6 +93,7 @@ describe("mapRawgGame", () => {
     expect(item.metadata).toEqual({
       platforms: ["PC", "PlayStation 5"],
       playtime: 74,
+      popularity: null,
     });
   });
 });

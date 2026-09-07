@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { Plus, Check, Loader2 } from "lucide-react";
 import type { NormalizedItem } from "@/lib/providers/types";
 import { getConfig } from "@/lib/media-config";
 import { Cover } from "@/components/media/cover";
+import { creatorHref } from "@/lib/search-links";
 
 export type Layout = "grid" | "rows" | "cards";
 
@@ -11,11 +13,34 @@ export function itemKey(i: NormalizedItem): string {
   return `${i.externalSource}:${i.externalId}`;
 }
 
-function subtitle(item: NormalizedItem): string {
-  const label = getConfig(item.type)?.label;
-  return [item.creators[0], item.releaseYear, label]
+/** "Creator · year · type" — the creator links to everything else they made. */
+function Subtitle({
+  item,
+  className,
+}: {
+  item: NormalizedItem;
+  className: string;
+}) {
+  const creator = item.creators[0];
+  const rest = [item.releaseYear, getConfig(item.type)?.label]
     .filter(Boolean)
     .join(" · ");
+  return (
+    <p className={className}>
+      {creator ? (
+        <>
+          <Link
+            href={creatorHref(item.type, creator)}
+            className="underline-offset-2 hover:text-ink hover:underline"
+          >
+            {creator}
+          </Link>
+          {rest ? " · " : null}
+        </>
+      ) : null}
+      {rest}
+    </p>
+  );
 }
 
 type AddState = { added: boolean; adding: boolean; onAdd: () => void };
@@ -119,7 +144,7 @@ export function Results({
               <CornerAdd {...state(item)} />
             </div>
             <p className="mt-1.5 line-clamp-2 text-sm text-ink">{item.title}</p>
-            <p className="text-xs text-muted">{subtitle(item)}</p>
+            <Subtitle item={item} className="text-xs text-muted" />
           </li>
         ))}
       </ul>
@@ -144,7 +169,7 @@ export function Results({
             <p className="mt-2 line-clamp-2 font-serif text-sm text-ink">
               {item.title}
             </p>
-            <p className="mb-2.5 text-xs text-muted">{subtitle(item)}</p>
+            <Subtitle item={item} className="mb-2.5 text-xs text-muted" />
             <div className="mt-auto">
               <FullAddButton {...state(item)} />
             </div>
@@ -169,7 +194,7 @@ export function Results({
             <p className="truncate font-serif text-[15px] text-ink">
               {item.title}
             </p>
-            <p className="truncate text-xs text-muted">{subtitle(item)}</p>
+            <Subtitle item={item} className="truncate text-xs text-muted" />
           </div>
           <AddButton {...state(item)} />
         </li>

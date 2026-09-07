@@ -9,6 +9,7 @@ import { yearFrom } from "./normalize";
 
 const BASE = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+const TOP_CAST = 3;
 
 function posterUrl(path: string | null | undefined): string | null {
   return path ? `${IMAGE_BASE}${path}` : null;
@@ -30,6 +31,7 @@ export interface TmdbMovie {
   release_date?: string;
   poster_path?: string | null;
   overview?: string;
+  popularity?: number;
 }
 
 export interface TmdbTv {
@@ -38,22 +40,38 @@ export interface TmdbTv {
   first_air_date?: string;
   poster_path?: string | null;
   overview?: string;
+  popularity?: number;
 }
 
 interface TmdbGenre {
   id: number;
   name: string;
 }
+interface TmdbCredits {
+  cast?: { name: string }[];
+  crew?: { name: string; job?: string }[];
+}
 interface TmdbMovieDetail extends TmdbMovie {
   genres?: TmdbGenre[];
   runtime?: number;
   tagline?: string;
+  credits?: TmdbCredits;
 }
 interface TmdbTvDetail extends TmdbTv {
   genres?: TmdbGenre[];
   number_of_seasons?: number;
   number_of_episodes?: number;
   episode_run_time?: number[];
+  created_by?: { name: string }[];
+  credits?: TmdbCredits;
+}
+
+const names = (xs: { name: string }[] | undefined) =>
+  (xs ?? []).map((x) => x.name).filter(Boolean);
+
+/** Leads (director/creator) first, then top-billed cast — the names people search by. */
+function creatorsFrom(leads: string[], credits?: TmdbCredits): string[] {
+  return [...new Set([...leads, ...names(credits?.cast).slice(0, TOP_CAST)])];
 }
 
 /** Pure mapper: a TMDB movie result → NormalizedItem. */
@@ -66,7 +84,10 @@ export function mapTmdbMovie(r: TmdbMovie): NormalizedItem {
     creators: [],
     imageUrl: posterUrl(r.poster_path),
     releaseYear: yearFrom(r.release_date),
-    metadata: { overview: r.overview ?? null },
+    metadata: {
+      overview: r.overview ?? null,
+      popularity: r.popularity ?? null,
+    },
   };
 }
 
@@ -80,8 +101,38 @@ export function mapTmdbTv(r: TmdbTv): NormalizedItem {
     creators: [],
     imageUrl: posterUrl(r.poster_path),
     releaseYear: yearFrom(r.first_air_date),
-    metadata: { overview: r.overview ?? null },
+    metadata: {
+      overview: r.overview ?? null,
+      popularity: r.popularity ?? null,
+    },
   };
+}
+
+/**
+ * Everything a person is credited on (cast or crew), for "works by" links.
+ * Takes TMDB's best-matching person for the name.
+ */
+async function personWorks(
+  kind: "movie" | "tv",
+  name: string,
+): Promise<NormalizedItem[]> {
+  const found = (await tmdbFetch(
+    `/search/person?include_adult=false&query=${encodeURIComponent(name)}`,
+  )) as { results?: { id: number }[] };
+  const person = found.results?.[0];
+  if (!person) return [];
+  const credits = (await tmdbFetch(`/person/${person.id}/${kind}_credits`)) as {
+    cast?: (TmdbMovie & TmdbTv)[];
+    crew?: (TmdbMovie & TmdbTv)[];
+  };
+  const seen = new Set<number>();
+  const out: NormalizedItem[] = [];
+  for (const r of [...(credits.crew ?? []), ...(credits.cast ?? [])]) {
+    if (!r?.id || seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(kind === "movie" ? mapTmdbMovie(r) : mapTmdbTv(r));
+  }
+  return out;
 }
 
 export const movieProvider: MetadataProvider = {
@@ -93,18 +144,28 @@ export const movieProvider: MetadataProvider = {
     return (data.results ?? []).map(mapTmdbMovie);
   },
   async getById(externalId: string): Promise<NormalizedItem | null> {
-    const r = (await tmdbFetch(`/movie/${externalId}`)) as TmdbMovieDetail;
+    const r = (await tmdbFetch(
+      `/movie/${externalId}?append_to_response=credits`,
+    )) as TmdbMovieDetail;
     if (!r?.id) return null;
+    const directors = (r.credits?.crew ?? [])
+      .filter((c) => c.job === "Director")
+      .map((c) => c.name);
     return {
       ...mapTmdbMovie(r),
+      creators: creatorsFrom(directors, r.credits),
       metadata: {
         description: r.overview ?? null,
         genres: (r.genres ?? []).map((g) => g.name),
         runtime: r.runtime ?? null,
         tagline: r.tagline || null,
+        popularity: r.popularity ?? null,
+        directors,
+        cast: names(r.credits?.cast).slice(0, 5),
       },
     };
   },
+  byCreator: (name) => personWorks("movie", name),
 };
 
 export const tvProvider: MetadataProvider = {
@@ -116,17 +177,25 @@ export const tvProvider: MetadataProvider = {
     return (data.results ?? []).map(mapTmdbTv);
   },
   async getById(externalId: string): Promise<NormalizedItem | null> {
-    const r = (await tmdbFetch(`/tv/${externalId}`)) as TmdbTvDetail;
+    const r = (await tmdbFetch(
+      `/tv/${externalId}?append_to_response=credits`,
+    )) as TmdbTvDetail;
     if (!r?.id) return null;
+    const createdBy = names(r.created_by);
     return {
       ...mapTmdbTv(r),
+      creators: creatorsFrom(createdBy, r.credits),
       metadata: {
         description: r.overview ?? null,
         genres: (r.genres ?? []).map((g) => g.name),
         seasons: r.number_of_seasons ?? null,
         episodes: r.number_of_episodes ?? null,
         episodeRuntime: r.episode_run_time?.[0] ?? null,
+        popularity: r.popularity ?? null,
+        createdBy,
+        cast: names(r.credits?.cast).slice(0, 5),
       },
     };
   },
+  byCreator: (name) => personWorks("tv", name),
 };

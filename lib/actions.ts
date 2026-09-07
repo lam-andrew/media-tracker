@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
+import { enrichForSave } from "@/lib/enrich";
 import { type Status } from "@/lib/constants";
 import type { NormalizedItem } from "@/lib/providers/types";
 
@@ -37,19 +38,22 @@ export async function addToLibrary(
   status: Status = "backlog",
 ): Promise<{ ok: true }> {
   const { supabase, user } = await requireUserClient();
+  // Search results are thin stubs; fill them in once now (bounded, best-effort)
+  // so the library shows real creators and proper artwork.
+  const full = await enrichForSave(item);
 
   const { data: media, error: mediaErr } = await supabase
     .from("media_items")
     .upsert(
       {
-        type: item.type,
-        external_source: item.externalSource,
-        external_id: item.externalId,
-        title: item.title,
-        creators: item.creators,
-        image_url: item.imageUrl,
-        release_year: item.releaseYear,
-        metadata: item.metadata,
+        type: full.type,
+        external_source: full.externalSource,
+        external_id: full.externalId,
+        title: full.title,
+        creators: full.creators,
+        image_url: full.imageUrl,
+        release_year: full.releaseYear,
+        metadata: full.metadata,
       },
       { onConflict: "external_source,external_id" },
     )

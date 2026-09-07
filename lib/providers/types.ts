@@ -25,4 +25,9 @@ export interface MetadataProvider {
   type: MediaType;
   search(query: string): Promise<NormalizedItem[]>;
   getById(externalId: string): Promise<NormalizedItem | null>;
+  /**
+   * Works by a person or studio (author, director, actor, developer…).
+   * Optional: callers fall back to `search(name)` when a source can't do better.
+   */
+  byCreator?(name: string): Promise<NormalizedItem[]>;
 }
