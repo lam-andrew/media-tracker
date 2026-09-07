@@ -42,3 +42,10 @@ The composite keeps the `MetadataProvider` contract, so nothing else in the engi
   IP the common case becomes "fail, then fall back" — slower than Open Library alone. Rejected
   without a key.
 - **Require the API key:** a user-provisioned secret for a personal tool; deferred by the user.
+
+## Amendment — 2026-09-06
+
+The order is now chosen automatically at startup: when `GOOGLE_BOOKS_API_KEY` is present, Google
+Books is primary and Open Library the backup; otherwise the reverse. The user provisioned a key
+(restricted to the Books API) in both `.env.local` and Vercel, so production runs Google-first.
+No manual reorder is needed going forward; the decision and its rationale above are unchanged.
