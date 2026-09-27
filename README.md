@@ -1,7 +1,8 @@
 # Marqd
 
 > **v2 development branch:** The current source tree is the inherited v1 app.
-> The replacement is being built in an isolated worktree; see [the v2 plan](docs/V2.md).
+> The first isolated v2 slice is available: [run locally with Docker](docs/V2-LOCAL.md).
+> See [the v2 plan](docs/V2.md) for replacement criteria.
 > `main` remains the live v1 app until the replacement passes its readiness checks.
 
 > The repository is named `media-tracker` (generic on purpose); **Marqd** is the product's

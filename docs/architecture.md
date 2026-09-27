@@ -134,3 +134,23 @@ for it here.
   Google Books backup provider (ADR 0012), `user_goals` (ADR 0011), streaming/latency notes.
 - **2026-08-28** — Initial C4 Level 1 (System Context) and Level 2 (Container) diagrams created
   alongside the project scaffold and documentation standards.
+
+
+## V2 local foundation
+
+V1 remains deployed unchanged. The isolated `v2` branch now contains a working books-first
+vertical slice; see [local setup](V2-LOCAL.md) and [ADR 0014](adr/0014-v2-local-api-and-database.md).
+
+```mermaid
+flowchart LR
+  User[Browser: React + Vite] -->|same-origin HTTP| Web[nginx: static app and API proxy]
+  Web --> API[Fastify: sessions, ownership, validation]
+  API --> DB[(PostgreSQL: users, sessions, library)]
+  API --> OL[Open Library: metadata]
+```
+
+Only nginx is exposed on loopback by default. Navigation updates client state immediately;
+TanStack Query caches server data and applies optimistic tracking updates with rollback.
+API writes require a matching Origin and a valid session; every library query includes the
+account owner. Version checks prevent silent overwrites. PostgreSQL persists in a named
+volume. This is a development foundation, not a production auth migration or public release.

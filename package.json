@@ -11,7 +11,15 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "v2:install": "npm ci --prefix packages/contracts && npm ci --prefix apps/api && npm ci --prefix apps/web",
+    "v2:lint": "apps/api/node_modules/.bin/eslint -c eslint.v2.config.mjs apps packages",
+    "v2:typecheck": "npm run typecheck --prefix apps/api && npm run typecheck --prefix apps/web",
+    "v2:test": "npm run test --prefix apps/api",
+    "v2:build": "npm run build --prefix apps/api && npm run build --prefix apps/web",
+    "v2:up": "docker compose -f infra/compose.yaml up --build -d",
+    "v2:stop": "docker compose -f infra/compose.yaml stop",
+    "v2:test:ui": "vitest run --config vitest.v2.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -9,7 +9,13 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     // Agent worktrees are separate checkouts that run their own tests.
-    exclude: ["**/node_modules/**", "**/.next/**", ".claude/worktrees/**"],
+    exclude: [
+      "apps/**",
+      "packages/**",
+      "**/node_modules/**",
+      "**/.next/**",
+      ".claude/worktrees/**",
+    ],
   },
   resolve: {
     alias: {
