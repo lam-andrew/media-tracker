@@ -1,5 +1,8 @@
 # Marqd — Architecture
 
+> These diagrams describe the implemented v1 system inherited on this branch.
+> The v2 target is recorded in [V2.md](V2.md); it is not implemented yet.
+
 This document describes Marqd's architecture using the [C4 model](https://c4model.com/).
 Diagrams are kept as **Mermaid** in Markdown so they render natively on GitHub and stay
 version-controlled as text. Keep them consistent with `README.md` §2 and with the Architecture

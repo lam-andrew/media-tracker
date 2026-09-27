@@ -1,5 +1,15 @@
 @AGENTS.md
 
+## v2 branch context
+
+On `v2`, follow [docs/V2.md](docs/V2.md) and ADR 0013 for the rebuild.
+The stack, design, scope, and status below describe inherited v1 unless explicitly updated.
+Study 02 is the accepted visual baseline for v2; preserve Study 01 as an alternative.
+Implement the replacement here, not in the original main checkout or the design-study folders.
+Do not merge into main or switch production until the readiness checks in docs/V2.md pass.
+The v2 end state replaces v1 code rather than permanently shipping two applications.
+
+
 # CLAUDE.md — Marqd (media-tracker)
 
 Agent-facing context and working rules for this repository. Every Claude Code session
