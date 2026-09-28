@@ -2273,3 +2273,27 @@ header nav button {
     font-size: 46px;
   }
 }
+
+/* Reserve identical copy slots for every selection so shelf browsing never reflows. */
+.curator h2 {
+  line-height: 1.05;
+  height: 3.15em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.curator .curator-creators {
+  line-height: 1.8;
+  height: 3.6em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .curator h2 {
+    height: 2.1em;
+    -webkit-line-clamp: 2;
+  }
+}

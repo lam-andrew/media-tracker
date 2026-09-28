@@ -33,8 +33,13 @@ export function Room({
           <div className="room-layout">
             <aside className="curator">
               <span className="eyebrow">ON YOUR MIND</span>
-              <h2>{current.title}</h2>
-              <p>{current.creators.join(", ")}</p>
+              <h2 title={current.title}>{current.title}</h2>
+              <p
+                className="curator-creators"
+                title={current.creators.join(", ")}
+              >
+                {current.creators.join(", ")}
+              </p>
               <div className="curator-line" />
               <p className="caption">A little further into another world.</p>
               <button className="circle-link" onClick={() => open(current)}>
