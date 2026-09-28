@@ -68,13 +68,7 @@ export function Room({
                     onClick={() => open(m)}
                     style={
                       {
-                        "--jacket": [
-                          "#ab785e",
-                          "#788984",
-                          "#8c7956",
-                          "#99594a",
-                          "#727e88",
-                        ][i % 5],
+                        "--jacket": `var(--jacket-${i % 5})`,
                         "--height": `${270 - (i % 3) * 12}px`,
                       } as React.CSSProperties
                     }

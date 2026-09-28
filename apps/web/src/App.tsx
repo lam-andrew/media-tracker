@@ -19,7 +19,8 @@ import { Cover } from "./components/Cover";
 import { Insights } from "./components/Insights";
 import { Discover } from "./components/Discover";
 import { Import } from "./components/Import";
-import { Settings, palettes } from "./components/Settings";
+import { Settings } from "./components/Settings";
+import { themeStyle } from "./theme";
 const views = [
   "Room",
   "Gallery",
@@ -209,6 +210,9 @@ export default function App() {
   }
   function navigate(n: string) {
     setView(n);
+    document
+      .querySelector<HTMLDetailsElement>(".profile-menu")
+      ?.removeAttribute("open");
     window.history.pushState(
       {},
       "",
@@ -231,16 +235,7 @@ export default function App() {
   return (
     <main
       className={dusk ? "world dusk" : "world"}
-      style={
-        !dusk
-          ? ({
-              "--accent": (palettes[palette] ?? palettes.Terracotta).accent,
-              "--paper": (palettes[palette] ?? palettes.Terracotta).paper,
-              "--panel": (palettes[palette] ?? palettes.Terracotta).panel,
-              "--ink": (palettes[palette] ?? palettes.Terracotta).ink,
-            } as React.CSSProperties)
-          : undefined
-      }
+      style={themeStyle(palette, dusk) as React.CSSProperties}
     >
       <a className="skip-link" href="#content">
         Skip to content
@@ -256,11 +251,21 @@ export default function App() {
         </button>
         {user && (
           <nav aria-label="Main navigation">
-            {views.map((n) => (
+            {["Library", "Discover", "Journal"].map((n) => (
               <button
                 key={n}
-                className={view === n ? "chosen" : ""}
-                onClick={() => navigate(n)}
+                className={
+                  (
+                    n === "Library"
+                      ? ["Room", "Gallery", "Favorites"].includes(view)
+                      : n === "Discover"
+                        ? ["Discover", "Search"].includes(view)
+                        : ["Journal", "Stats"].includes(view)
+                  )
+                    ? "chosen"
+                    : ""
+                }
+                onClick={() => navigate(n === "Library" ? "Room" : n)}
               >
                 {n}
               </button>
@@ -268,6 +273,15 @@ export default function App() {
           </nav>
         )}
         <div className="header-tools">
+          {user && (
+            <button
+              className="round"
+              aria-label="Search"
+              onClick={() => navigate("Search")}
+            >
+              <Search size={18} />
+            </button>
+          )}
           {user && (
             <details className="profile-menu">
               <summary aria-label="Profile menu">
@@ -284,6 +298,28 @@ export default function App() {
                 <a href="/api/export" download>
                   Export library
                 </a>
+                {user && (
+                  <button
+                    className="sign-out"
+                    aria-label="Sign out"
+                    onClick={async () => {
+                      try {
+                        await api("/logout", { method: "POST" });
+                        setSelected(null);
+                        await qc.cancelQueries();
+                        qc.clear();
+                        qc.setQueryData(["session"], { user: null });
+                        setToast("");
+                        setError("");
+                        navigate("Room");
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    <LogOut size={15} /> Sign out
+                  </button>
+                )}
               </div>
             </details>
           )}
@@ -294,31 +330,9 @@ export default function App() {
           >
             {dusk ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          {user && (
-            <button
-              className="round"
-              aria-label="Sign out"
-              onClick={async () => {
-                try {
-                  await api("/logout", { method: "POST" });
-                  setSelected(null);
-                  await qc.cancelQueries();
-                  qc.clear();
-                  qc.setQueryData(["session"], { user: null });
-                  setToast("");
-                  setError("");
-                  navigate("Room");
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              <LogOut size={17} />
-            </button>
-          )}
         </div>
       </header>
-      <section className="intro">
+      <section className={view === "Room" ? "intro" : "intro compact-intro"}>
         <div className="eyebrow">
           <span />
           YOUR OWN LITTLE CORNER OF THE WORLD
@@ -328,6 +342,18 @@ export default function App() {
             <>
               Find your <em>next world.</em>
             </>
+          ) : view !== "Room" ? (
+            (
+              {
+                Gallery: "Your collection.",
+                Favorites: "The ones you love.",
+                Journal: "Your story so far.",
+                Stats: "A little perspective.",
+                Settings: "Make yourself at home.",
+                Import: "Bring your stories.",
+                Discover: "Your next obsession.",
+              } as Record<string, string>
+            )[view]
           ) : (
             <>
               A room of <em>your own.</em>
@@ -340,6 +366,28 @@ export default function App() {
             : "For the stories you’re in. And the ones you’ll never quite leave."}
         </p>
       </section>
+      {user && ["Journal", "Stats", "Discover", "Search"].includes(view) && (
+        <div className="workspace-tabs" aria-label="Section navigation">
+          {(["Journal", "Stats"].includes(view)
+            ? ["Journal", "Stats"]
+            : ["Discover", "Search"]
+          ).map((n) => (
+            <button
+              key={n}
+              aria-pressed={view === n}
+              onClick={() => navigate(n)}
+            >
+              {n === "Stats"
+                ? "Insights & goals"
+                : n === "Discover"
+                  ? "For you"
+                  : n === "Search"
+                    ? "Search catalog"
+                    : n}
+            </button>
+          ))}
+        </div>
+      )}
       {session.isPending ? (
         <p className="loading" role="status">
           Opening your room…
@@ -359,111 +407,137 @@ export default function App() {
         )
       ) : (
         <>
-          {["Room", "Gallery", "Favorites", "Search"].includes(view) && (
-            <div className="toolbar glass">
-              <span className="eyebrow toolbar-label">
-                {view === "Search"
-                  ? "DISCOVER STORIES"
-                  : `${items.length} STORIES`}
-              </span>
-              <label className="search">
-                <Search size={15} />
-                <input
-                  aria-label={
-                    view === "Search"
-                      ? `Search ${mediaConfig[mediaType].label.toLowerCase()}`
-                      : "Filter library"
-                  }
-                  value={query}
-                  maxLength={150}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={
-                    view === "Search"
-                      ? "Title, author, or ISBN…"
-                      : "Find a story…"
-                  }
-                />
-              </label>
-              <button className="add" onClick={() => navigate("Search")}>
-                <Plus size={16} />
-                Add a story
-              </button>
-            </div>
-          )}
           <div id="content" tabIndex={-1} />
-          {view === "Search" && (
-            <div className="filters">
-              <label>
-                Media type
-                <select
-                  value={mediaType}
-                  onChange={(e) => {
-                    setMediaType(e.target.value);
-                    setCreator(false);
-                  }}
-                >
-                  {Object.entries(mediaConfig).map(([t, c]) => (
-                    <option key={t} value={t}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={creator}
-                  onChange={(e) => setCreator(e.target.checked)}
-                />{" "}
-                Search by creator
-              </label>
-              {config.data?.providers?.[mediaType] === false && (
-                <p role="status">
-                  This catalog needs an API key in the server configuration.
-                </p>
-              )}
+          {["Room", "Gallery", "Favorites"].includes(view) && (
+            <div className="collection-heading">
+              <div>
+                <h2>Your library</h2>
+                <span>
+                  {filtered.length} of {items.length} stories
+                </span>
+              </div>
+              <div className="workspace-tabs" aria-label="Library views">
+                {["Room", "Gallery", "Favorites"].map((n) => (
+                  <button
+                    key={n}
+                    aria-pressed={view === n}
+                    onClick={() => navigate(n)}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-          {["Gallery", "Favorites", "Room"].includes(view) && (
-            <div className="filters">
-              <label>
-                Type
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
-                  <option value="all">All media</option>
-                  {Object.entries(mediaConfig).map(([t, c]) => (
-                    <option value={t} key={t}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Status
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="all">Any status</option>
-                  <option value="backlog">Planned</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="abandoned">Stopped</option>
-                </select>
-              </label>
-              <label>
-                Sort
-                <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                  <option value="added">Recently added</option>
-                  <option value="title">Title</option>
-                  <option value="rating">Rating</option>
-                  <option value="year">Release year</option>
-                </select>
-              </label>
-            </div>
-          )}
+          <div className="collection-controls">
+            {["Room", "Gallery", "Favorites", "Search"].includes(view) && (
+              <div className="toolbar glass">
+                <span className="eyebrow toolbar-label">
+                  {view === "Search"
+                    ? "DISCOVER STORIES"
+                    : `${items.length} STORIES`}
+                </span>
+                <label className="search">
+                  <Search size={15} />
+                  <input
+                    aria-label={
+                      view === "Search"
+                        ? `Search ${mediaConfig[mediaType].label.toLowerCase()}`
+                        : "Filter library"
+                    }
+                    value={query}
+                    maxLength={150}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={
+                      view === "Search"
+                        ? "Title, author, or ISBN…"
+                        : "Find a story…"
+                    }
+                  />
+                </label>
+                <button className="add" onClick={() => navigate("Search")}>
+                  <Plus size={16} />
+                  Add a story
+                </button>
+              </div>
+            )}
+            {view === "Search" && (
+              <div className="filters">
+                <label>
+                  Media type
+                  <select
+                    value={mediaType}
+                    onChange={(e) => {
+                      setMediaType(e.target.value);
+                      setCreator(false);
+                    }}
+                  >
+                    {Object.entries(mediaConfig).map(([t, c]) => (
+                      <option key={t} value={t}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={creator}
+                    onChange={(e) => setCreator(e.target.checked)}
+                  />{" "}
+                  Search by creator
+                </label>
+                {config.data?.providers?.[mediaType] === false && (
+                  <p role="status">
+                    This catalog needs an API key in the server configuration.
+                  </p>
+                )}
+              </div>
+            )}
+            {["Gallery", "Favorites", "Room"].includes(view) && (
+              <div className="filters">
+                <label>
+                  Type
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                  >
+                    <option value="all">All media</option>
+                    {Object.entries(mediaConfig).map(([t, c]) => (
+                      <option value={t} key={t}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="all">Any status</option>
+                    <option value="backlog">Planned</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="abandoned">Stopped</option>
+                  </select>
+                </label>
+                <label>
+                  Sort
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    <option value="added">Recently added</option>
+                    <option value="title">Title</option>
+                    <option value="rating">Rating</option>
+                    <option value="year">Release year</option>
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
           {error && !selected && (
             <p role="alert" className="error loading">
               {error}
@@ -471,6 +545,8 @@ export default function App() {
           )}
           {view === "Settings" ? (
             <Settings
+              dusk={dusk}
+              setDusk={setDusk}
               palette={palette}
               setPalette={setPalette}
               onDeleted={resetSession}

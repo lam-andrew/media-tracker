@@ -245,3 +245,44 @@ test("successful saves close the item and clear its deep link", async () => {
   expect(window.location.search).not.toContain("item=");
   client.clear();
 });
+
+test("navigation groups secondary tools and palette works with evening mode", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            url.endsWith("/session")
+              ? { user: { id: "reader", email: "reader@example.invalid" } }
+              : url.endsWith("/library")
+                ? [item]
+                : {},
+          ),
+        ),
+      ),
+    ),
+  );
+  const client = mount();
+  const nav = await screen.findByRole("navigation", {
+    name: "Main navigation",
+  });
+  expect(
+    within(nav)
+      .getAllByRole("button")
+      .map((b) => b.textContent),
+  ).toEqual(["Library", "Discover", "Journal"]);
+  fireEvent.click(screen.getByText("Profile & settings"));
+  fireEvent.click(screen.getByRole("button", { name: "Evening", exact: true }));
+  const world = screen.getByRole("main");
+  const before = world.style.getPropertyValue("--scene-start");
+  fireEvent.click(screen.getByRole("button", { name: "Ocean", exact: true }));
+  expect(world).toHaveClass("dusk");
+  expect(world.style.getPropertyValue("--scene-start")).not.toBe(before);
+  expect(localStorage.getItem("marqd-palette")).toBe("Ocean");
+  fireEvent.click(within(nav).getByRole("button", { name: "Journal" }));
+  fireEvent.click(screen.getByRole("button", { name: "Insights & goals" }));
+  expect(window.location.pathname).toBe("/stats");
+  client.clear();
+  localStorage.clear();
+});

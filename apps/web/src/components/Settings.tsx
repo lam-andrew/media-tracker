@@ -1,46 +1,16 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
-export const palettes: Record<
-  string,
-  { accent: string; paper: string; panel: string; ink: string }
-> = {
-  Terracotta: {
-    accent: "#a65b43",
-    paper: "#f6f2ed",
-    panel: "#e9e0d4",
-    ink: "#453d36",
-  },
-  Sage: {
-    accent: "#4c7663",
-    paper: "#f1f5ef",
-    panel: "#dce8dc",
-    ink: "#303e34",
-  },
-  Ocean: {
-    accent: "#366888",
-    paper: "#f0f5f7",
-    panel: "#dce8ef",
-    ink: "#293b48",
-  },
-  Plum: {
-    accent: "#815274",
-    paper: "#f7f0f5",
-    panel: "#eadce7",
-    ink: "#463341",
-  },
-  Slate: {
-    accent: "#566879",
-    paper: "#f1f3f5",
-    panel: "#dee3e9",
-    ink: "#303a43",
-  },
-};
+import { palettes } from "../theme";
 export function Settings({
+  dusk,
+  setDusk,
   palette,
   setPalette,
   onDeleted,
 }: {
+  dusk: boolean;
+  setDusk: (value: boolean) => void;
   palette: string;
   setPalette: (s: string) => void;
   onDeleted: () => void;
@@ -76,7 +46,15 @@ export function Settings({
   }
   return (
     <section className="feature-panel settings-panel">
-      <h2>Make yourself at home.</h2>
+      <h3>Lighting</h3>
+      <div className="palette-options">
+        <button aria-pressed={!dusk} onClick={() => setDusk(false)}>
+          Daylight
+        </button>
+        <button aria-pressed={dusk} onClick={() => setDusk(true)}>
+          Evening
+        </button>
+      </div>
       <h3>Color palette</h3>
       <div className="palette-options">
         {Object.entries(palettes).map(([name, p]) => (
