@@ -265,6 +265,9 @@ h1 em {
   border-radius: 99px;
 }
 .room {
+  --room-inset: 35px;
+  --note-width: 160px;
+  --room-gap: 24px;
   position: relative;
   margin: 0 3%;
   min-height: 520px;
@@ -307,7 +310,8 @@ h1 em {
 }
 .wall-lines {
   position: absolute;
-  right: 12%;
+  /* Keep the wall seam in the gutter, clear of the translucent note. */
+  right: calc(var(--room-inset) + var(--note-width) + var(--room-gap) / 2);
   top: 0;
   height: 100%;
   width: 22%;
@@ -1114,6 +1118,9 @@ dialog[open] {
   }
 }
 @media (min-width: 1600px) {
+  .room {
+    --room-inset: 60px;
+  }
   .world {
     max-width: 1700px;
     margin: auto;
@@ -2170,8 +2177,8 @@ header nav button {
   padding-top: 28px;
 }
 .room-layout {
-  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) 160px;
-  gap: 24px;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) var(--note-width);
+  gap: var(--room-gap);
 }
 .curator h2 {
   overflow-wrap: anywhere;
