@@ -1105,6 +1105,10 @@ dialog[open] {
   }
 }
 @media (min-width: 1600px) {
+  .room-label,
+  .room-bottom {
+    padding-inline: 60px;
+  }
   .world {
     max-width: 1700px;
     margin: auto;
@@ -2293,5 +2297,15 @@ header nav button {
   .curator h2 {
     height: 2.1em;
     -webkit-line-clamp: 2;
+  }
+}
+
+/* Align the note to the scene captions, with a clear gutter beside the shelf. */
+@media (min-width: 1201px) {
+  .room-layout {
+    column-gap: 48px;
+  }
+  .plinth {
+    margin-right: 0;
   }
 }
