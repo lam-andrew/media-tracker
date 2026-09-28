@@ -1,3 +1,4 @@
+import { diversify } from "./recommendations.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -233,4 +234,21 @@ test("near-duplicate titles keep the edition with artwork", () => {
   );
   assert.equal(result.length, 1);
   assert.equal(result[0].externalId, "43");
+});
+
+test("recommendations balance media types and avoid repeated suggestions", () => {
+  const rows = diversify(
+    [
+      { reason: "Seed A", items: [movie, { ...movie, externalId: "43" }] },
+      { reason: "Seed B", items: [movie, { ...movie, type: "tv" }] },
+    ],
+    2,
+  );
+  assert.deepEqual(
+    rows[0].items.map((m) => m.type),
+    ["movie", "tv"],
+  );
+  const keys = rows.flatMap((r) => r.items.map(mediaKey));
+  assert.equal(keys.length, new Set(keys).size);
+  assert.equal(rows[0].items[0].metadata.recommendationReason, "Seed A");
 });

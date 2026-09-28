@@ -56,6 +56,9 @@ export function Gallery({
             </div>
             <h3>{m.title}</h3>
             <p>{m.creators.join(", ")}</p>
+            {typeof m.metadata.recommendationReason === "string" && (
+              <small>{m.metadata.recommendationReason}</small>
+            )}
           </button>
         ))}
       </section>

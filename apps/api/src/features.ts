@@ -1,3 +1,4 @@
+import { chooseSeeds, diversify } from "./recommendations.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
@@ -222,14 +223,7 @@ export async function features(
       )
     ).rows.map(libraryRow);
     const owned = new Set(items.map(mediaKey));
-    const seeds = items
-      .filter(
-        (m) =>
-          m.tracking.favorite ||
-          (m.tracking.rating ?? 0) >= 4 ||
-          m.tracking.status === "completed",
-      )
-      .slice(0, 4);
+    const seeds = chooseSeeds(items);
     const inputs = seeds.length
       ? seeds
       : [
@@ -263,6 +257,6 @@ export async function features(
         }
       }),
     );
-    return rows;
+    return diversify(rows);
   });
 }
