@@ -15,7 +15,9 @@ export default defineConfig({
     },
   },
   test: {
-    server: { deps: { inline: [/@tanstack\/react-query/, /lucide-react/] } },
+    server: {
+      deps: { inline: [/@tanstack\/react-query/, /lucide-react/, /@radix-ui/] },
+    },
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     include: ["apps/web/src/**/*.test.tsx"],

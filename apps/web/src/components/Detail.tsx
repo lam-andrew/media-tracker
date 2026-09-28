@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Plus, Check } from "lucide-react";
@@ -149,7 +150,8 @@ export function Detail({
           )}
           <label className="form-field">
             Status
-            <select
+            <Select
+              aria-label="Status"
               disabled={busy}
               value={draft.status}
               onChange={(e) =>
@@ -163,13 +165,14 @@ export function Detail({
                   </option>
                 ),
               )}
-            </select>
+            </Select>
           </label>
           {item ? (
             <>
               <label className="form-field">
                 Your rating
-                <select
+                <Select
+                  aria-label="Your rating"
                   disabled={busy}
                   value={draft.rating ?? ""}
                   onChange={(e) =>
@@ -187,7 +190,7 @@ export function Detail({
                       </option>
                     ),
                   )}
-                </select>
+                </Select>
               </label>
               {mediaConfig[media.type].unit && (
                 <div className="progress-fields">

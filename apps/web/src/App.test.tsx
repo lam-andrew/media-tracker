@@ -1,3 +1,4 @@
+import type { SelectHTMLAttributes } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 import {
   cleanup,
@@ -10,6 +11,13 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import type { LibraryItem } from "./types";
+// These tests isolate application state and network behavior. Real custom-menu
+// focus, keyboard selection, dismissal, and dialog portals are checked in-browser.
+vi.mock("./components/Select", () => ({
+  Select: (props: SelectHTMLAttributes<HTMLSelectElement>) => (
+    <select {...props} />
+  ),
+}));
 afterEach(() => {
   cleanup();
   window.history.replaceState({}, "", "/");

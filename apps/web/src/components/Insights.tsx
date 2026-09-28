@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "../api";
@@ -178,14 +179,18 @@ export function Insights({ items }: { items: LibraryItem[] }) {
       >
         <label>
           Goal type
-          <select value={type} onChange={(e) => setType(e.target.value)}>
+          <Select
+            aria-label="Goal media type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
             <option value="all">All media</option>
             {Object.entries(mediaConfig).map(([t, c]) => (
               <option key={t} value={t}>
                 {c.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           Yearly target

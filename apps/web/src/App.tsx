@@ -1,3 +1,4 @@
+import { Select } from "./components/Select";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Moon, Sun, Search, Plus, LogOut, ArrowUpRight } from "lucide-react";
@@ -465,7 +466,8 @@ export default function App() {
               <div className="filters">
                 <label>
                   Media type
-                  <select
+                  <Select
+                    aria-label="Media type"
                     value={mediaType}
                     onChange={(e) => {
                       setMediaType(e.target.value);
@@ -477,7 +479,7 @@ export default function App() {
                         {c.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label>
                   <input
@@ -498,7 +500,8 @@ export default function App() {
               <div className="filters">
                 <label>
                   Type
-                  <select
+                  <Select
+                    aria-label="Type"
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                   >
@@ -508,11 +511,12 @@ export default function App() {
                         {c.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label>
                   Status
-                  <select
+                  <Select
+                    aria-label="Status"
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                   >
@@ -521,11 +525,12 @@ export default function App() {
                     <option value="in_progress">In progress</option>
                     <option value="completed">Completed</option>
                     <option value="abandoned">Stopped</option>
-                  </select>
+                  </Select>
                 </label>
                 <label>
                   Sort
-                  <select
+                  <Select
+                    aria-label="Sort"
                     value={sort}
                     onChange={(e) => setSort(e.target.value)}
                   >
@@ -533,7 +538,7 @@ export default function App() {
                     <option value="title">Title</option>
                     <option value="rating">Rating</option>
                     <option value="year">Release year</option>
-                  </select>
+                  </Select>
                 </label>
               </div>
             )}
