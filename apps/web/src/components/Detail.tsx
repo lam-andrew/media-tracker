@@ -9,6 +9,7 @@ import {
   mediaConfig,
 } from "../types";
 import { Cover } from "./Cover";
+import { RichText } from "./RichText";
 import { api } from "../api";
 export function Detail({
   media,
@@ -18,6 +19,8 @@ export function Detail({
   save,
   busy,
   error,
+  remove,
+  byCreator,
 }: {
   media: Media;
   item?: LibraryItem;
@@ -26,6 +29,8 @@ export function Detail({
   save: (item: LibraryItem, tracking: Tracking) => Promise<void>;
   busy: boolean;
   error: string;
+  remove?: (item: LibraryItem) => Promise<void>;
+  byCreator?: (name: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<Tracking>(
@@ -39,14 +44,18 @@ export function Detail({
       notes: "",
     },
   );
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [validation, setValidation] = useState("");
   const enrichment = useQuery({
-    queryKey: ["detail", media.externalId],
+    queryKey: ["detail", media.type, media.externalId],
     queryFn: ({ signal }) =>
-      api<Media>(`/media?id=${encodeURIComponent(media.externalId)}`, {
-        signal,
-      }),
-    enabled: !media.description && !item,
+      api<Media>(
+        `/media?type=${media.type}&source=${media.source}&id=${encodeURIComponent(media.externalId)}`,
+        {
+          signal,
+        },
+      ),
+    enabled: !item || !media.description,
     staleTime: 300000,
     retry: false,
   });
@@ -57,7 +66,13 @@ export function Detail({
     return () => node?.close();
   }, []);
   function patch<K extends keyof Tracking>(key: K, value: Tracking[K]) {
-    setDraft({ ...draft, [key]: value });
+    setDraft({
+      ...draft,
+      [key]: value,
+      ...(key === "status" && value === "completed" && !draft.finishedAt
+        ? { finishedAt: new Date().toISOString().slice(0, 10) }
+        : {}),
+    });
   }
   return (
     <dialog
@@ -91,13 +106,42 @@ export function Detail({
             {mediaConfig[media.type]?.label ?? media.type}
           </span>
           <h2>{media.title}</h2>
-          <p className="byline">{media.creators.join(", ")}</p>
-          <p className="description">
-            {display.description ||
-              (enrichment.isPending && !item
+          <div className="byline">
+            {display.creators.map((name) => (
+              <button key={name} onClick={() => byCreator?.(name)}>
+                {name}
+              </button>
+            ))}
+          </div>
+          <div className="media-facts">
+            {Object.entries(display.metadata)
+              .filter(
+                ([k, v]) =>
+                  [
+                    "year",
+                    "genres",
+                    "platforms",
+                    "runtime",
+                    "seasons",
+                    "episodes",
+                    "metacritic",
+                    "publishers",
+                  ].includes(k) && v != null,
+              )
+              .map(([k, v]) => (
+                <span key={k}>
+                  {k}: {Array.isArray(v) ? v.join(", ") : String(v)}
+                </span>
+              ))}
+          </div>
+          <RichText
+            text={
+              display.description ||
+              (enrichment.isFetching
                 ? "Loading description…"
-                : "No description available.")}
-          </p>
+                : "No description available.")
+            }
+          />
           {enrichment.isError && (
             <p className="inline-warning">
               The description couldn’t load. Your tracking is still available.
@@ -112,10 +156,13 @@ export function Detail({
                 patch("status", e.target.value as Tracking["status"])
               }
             >
-              <option value="backlog">Want to read</option>
-              <option value="in_progress">Reading</option>
-              <option value="completed">Finished</option>
-              <option value="abandoned">Stopped</option>
+              {Object.entries(mediaConfig[media.type].statuses).map(
+                ([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ),
+              )}
             </select>
           </label>
           {item ? (
@@ -142,33 +189,70 @@ export function Detail({
                   )}
                 </select>
               </label>
-              <div className="progress-fields">
+              {mediaConfig[media.type].unit && (
+                <div className="progress-fields">
+                  <label className="form-field">
+                    Current {mediaConfig[media.type]?.unit ?? "progress"}
+                    <input
+                      disabled={busy}
+                      type="number"
+                      min="0"
+                      value={draft.current}
+                      onChange={(e) => patch("current", Number(e.target.value))}
+                    />
+                  </label>
+                  <label className="form-field">
+                    Total (optional)
+                    <input
+                      disabled={busy}
+                      type="number"
+                      min="1"
+                      value={draft.total ?? ""}
+                      onChange={(e) =>
+                        patch(
+                          "total",
+                          e.target.value ? Number(e.target.value) : null,
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+              <label className="form-field">
+                Date finished
+                <input
+                  type="date"
+                  value={draft.finishedAt ?? ""}
+                  disabled={busy}
+                  onChange={(e) => patch("finishedAt", e.target.value || null)}
+                />
+              </label>
+              {media.type === "tv" && (
                 <label className="form-field">
-                  Current {mediaConfig[media.type]?.unit ?? "progress"}
+                  Current season
                   <input
-                    disabled={busy}
                     type="number"
-                    min="0"
-                    value={draft.current}
-                    onChange={(e) => patch("current", Number(e.target.value))}
-                  />
-                </label>
-                <label className="form-field">
-                  Total (optional)
-                  <input
+                    min={0}
+                    value={draft.season ?? ""}
                     disabled={busy}
-                    type="number"
-                    min="1"
-                    value={draft.total ?? ""}
                     onChange={(e) =>
                       patch(
-                        "total",
+                        "season",
                         e.target.value ? Number(e.target.value) : null,
                       )
                     }
                   />
                 </label>
-              </div>
+              )}
+              <label className="form-field">
+                Date started
+                <input
+                  type="date"
+                  value={draft.startedAt ?? ""}
+                  disabled={busy}
+                  onChange={(e) => patch("startedAt", e.target.value || null)}
+                />
+              </label>
               <label className="favorite-check">
                 <input
                   disabled={busy}
@@ -204,6 +288,22 @@ export function Detail({
                 <Check size={16} />
                 {busy ? "Saving…" : "Save changes"}
               </button>
+              {remove &&
+                (confirmRemove ? (
+                  <div className="delete-confirm">
+                    <p>Remove this story and its tracking from your library?</p>
+                    <button disabled={busy} onClick={() => remove(item)}>
+                      Confirm removal
+                    </button>
+                    <button onClick={() => setConfirmRemove(false)}>
+                      Keep story
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmRemove(true)}>
+                    Remove from library
+                  </button>
+                ))}
             </>
           ) : (
             <button

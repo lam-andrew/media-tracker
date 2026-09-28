@@ -1,15 +1,15 @@
 import { Pool } from "pg";
-import { readFile } from "node:fs/promises";
+import { migrate } from "./migrate.js";
 import { buildServer } from "./server.js";
 if (!process.env.DATABASE_URL)
   throw new Error("DATABASE_URL is required; use a separate v2 database.");
+if (
+  process.env.REQUIRE_EMAIL_CONFIRMATION === "true" &&
+  (!process.env.SMTP_HOST || !process.env.SMTP_FROM)
+)
+  throw new Error("Email confirmation requires SMTP_HOST and SMTP_FROM");
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
-await pool.query(
-  await readFile(
-    process.env.MIGRATION_FILE ?? "infra/migrations/001-initial.sql",
-    "utf8",
-  ),
-);
+await migrate(pool);
 const app = await buildServer(pool, {
   origin: process.env.APP_ORIGIN ?? "http://localhost:3200",
   secure: process.env.COOKIE_SECURE === "true",

@@ -1,33 +1,77 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { BRAND, type User } from "../types";
 export function Auth({ onSuccess }: { onSuccess: (u: User) => void }) {
-  const [signup, setSignup] = useState(false),
+  const [link] = useState(
+    () => new URLSearchParams(window.location.hash.slice(1)),
+  );
+  const purpose = link.has("reset")
+    ? "reset"
+    : link.has("verify")
+      ? "verify"
+      : null;
+  const [mode, setMode] = useState("signin"),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(link.get("auth-error") ?? ""),
+    [message, setMessage] = useState(""),
+    [complete, setComplete] = useState(false);
+  const config = useQuery({
+    queryKey: ["config"],
+    queryFn: () =>
+      api<{ google: boolean; email: boolean; registration: boolean }>(
+        "/config",
+      ),
+  });
   return (
     <section className="auth-panel glass">
       <span className="eyebrow">A SPACE THAT’S ONLY YOURS</span>
-      <h2>{signup ? "Make yourself at home." : "Welcome back."}</h2>
-      <p>
-        {signup
-          ? `Create a separate ${BRAND.name} v2 development account.`
-          : "Sign in to your v2 library."}
-      </p>
+      <h2>
+        {purpose && !complete
+          ? purpose === "reset"
+            ? "A fresh start."
+            : "Confirm your email."
+          : mode === "signup"
+            ? "Make yourself at home."
+            : "Welcome back."}
+      </h2>
+      <p>Your private {BRAND.name} collection.</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
           setError("");
+          setMessage("");
           try {
-            const r = await api<{ user: User }>(
-              signup ? "/register" : "/login",
-              { method: "POST", body: JSON.stringify({ email, password }) },
-            );
+            if (purpose && !complete) {
+              const r = await api<{ message: string }>("/auth/complete", {
+                method: "POST",
+                body: JSON.stringify({
+                  purpose,
+                  token: link.get(purpose),
+                  password: purpose === "reset" ? password : undefined,
+                }),
+              });
+              setMessage(r.message);
+              setComplete(true);
+              window.history.replaceState({}, "", window.location.pathname);
+            } else if (mode === "forgot" || mode === "verify") {
+              const r = await api<{ message: string }>(
+                "/auth/request-" + (mode === "forgot" ? "reset" : "verify"),
+                { method: "POST", body: JSON.stringify({ email }) },
+              );
+              setMessage(r.message);
+            } else {
+              const r = await api<{ user?: User; message?: string }>(
+                mode === "signup" ? "/register" : "/login",
+                { method: "POST", body: JSON.stringify({ email, password }) },
+              );
+              if (r.user) onSuccess(r.user);
+              else setMessage(r.message ?? "Check your email.");
+            }
             setPassword("");
-            onSuccess(r.user);
           } catch (e) {
             setError((e as Error).message);
           } finally {
@@ -35,33 +79,42 @@ export function Auth({ onSuccess }: { onSuccess: (u: User) => void }) {
           }
         }}
       >
-        <label>
-          Email
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={254}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            minLength={12}
-            maxLength={128}
-            autoComplete={signup ? "new-password" : "current-password"}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {signup && (
+        {(!purpose || complete) && (
+          <label>
+            Email
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={254}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+        )}
+        {((purpose === "reset" && !complete) ||
+          ((!purpose || complete) && ["signin", "signup"].includes(mode))) && (
+          <label>
+            Password
+            <input
+              type="password"
+              minLength={12}
+              maxLength={128}
+              autoComplete={
+                mode === "signup" || purpose === "reset"
+                  ? "new-password"
+                  : "current-password"
+              }
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+        )}
+        {mode === "signup" && (
           <small>
-            At least 12 characters. This account is separate from your current
-            Marqd account.
+            At least 12 characters. This account is separate from your original{" "}
+            {BRAND.name} account.
           </small>
         )}
         {error && (
@@ -69,22 +122,57 @@ export function Auth({ onSuccess }: { onSuccess: (u: User) => void }) {
             {error}
           </p>
         )}
-        <button disabled={busy} className="primary">
-          {busy ? "One moment…" : signup ? "Create account" : "Sign in"}
+        {message && <p role="status">{message}</p>}
+        <button className="primary" disabled={busy}>
+          {busy
+            ? "One moment…"
+            : purpose && !complete
+              ? purpose === "reset"
+                ? "Set new password"
+                : "Confirm email"
+              : mode === "signup"
+                ? "Create account"
+                : mode === "forgot"
+                  ? "Send reset link"
+                  : mode === "verify"
+                    ? "Send confirmation"
+                    : "Sign in"}
         </button>
       </form>
-      <button
-        className="auth-switch"
-        disabled={busy}
-        onClick={() => {
-          setSignup(!signup);
-          setError("");
-        }}
-      >
-        {signup
-          ? "Already have a v2 account? Sign in"
-          : "New here? Create a v2 account"}
-      </button>
+      {(!purpose || complete) && (
+        <div className="auth-actions">
+          {config.data?.google && (
+            <a className="primary google-button" href="/api/auth/google">
+              Continue with Google
+            </a>
+          )}
+          {[
+            "signin",
+            ...(config.data?.registration ? ["signup"] : []),
+            ...(config.data?.email ? ["forgot", "verify"] : []),
+          ]
+            .filter((m) => m !== mode)
+            .map((m) => (
+              <button
+                key={m}
+                disabled={busy}
+                onClick={() => {
+                  setMode(m);
+                  setError("");
+                  setMessage("");
+                }}
+              >
+                {m === "signin"
+                  ? "Sign in"
+                  : m === "signup"
+                    ? "Create an account"
+                    : m === "forgot"
+                      ? "Forgot password?"
+                      : "Resend confirmation"}
+              </button>
+            ))}
+        </div>
+      )}
     </section>
   );
 }

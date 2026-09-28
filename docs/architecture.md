@@ -154,3 +154,25 @@ TanStack Query caches server data and applies optimistic tracking updates with r
 API writes require a matching Origin and a valid session; every library query includes the
 account owner. Version checks prevent silent overwrites. PostgreSQL persists in a named
 volume. This is a development foundation, not a production auth migration or public release.
+
+## V2 parity containers (ADR 0015)
+
+```mermaid
+C4Container
+Person(reader, "Reader", "Private multi-media catalog")
+System_Ext(catalogs, "Metadata providers", "Open Library / Google Books / TMDB / RAWG")
+System_Ext(identity, "Google and SMTP", "Optional identity and email delivery")
+System_Boundary(local, "Portable Docker deployment") {
+Container(webv2, "Web", "nginx + React", "Immediate client navigation, shared cached library")
+Container(apiv2, "API", "Node 22 + Fastify", "Ownership, sessions, providers, imports, goals")
+ContainerDb(dbv2, "Database", "PostgreSQL 17", "Accounts, library, goals, migration ledger")
+}
+Rel(reader, webv2, "Uses", "HTTP(S) via operator proxy")
+Rel(webv2, apiv2, "Same-origin API", "HTTP inside Docker")
+Rel(apiv2, dbv2, "Reads/writes", "Postgres")
+Rel(apiv2, catalogs, "Metadata lookup", "HTTPS")
+Rel(apiv2, identity, "Sign-in and recovery", "HTTPS / SMTP TLS")
+```
+
+JSON exports are scoped to the session owner; the offline v1 converter requires an explicit owner UUID.
+Migration SQL and its ledger entry commit atomically. Restore tooling creates a separate database.

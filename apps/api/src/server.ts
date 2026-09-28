@@ -8,9 +8,13 @@ import {
   credentialsSchema,
   trackingSchema,
   type User,
+  mediaConfig,
 } from "../../../packages/contracts/src/index.js";
 import { hashPassword, verifyPassword, newToken, tokenHash } from "./auth.js";
-import { providers, type Provider } from "./providers.js";
+import { type Provider } from "./providers.js";
+import { catalog, rank, getMedia, type CatalogProvider } from "./catalog.js";
+import { features, libraryRow } from "./features.js";
+import { authExtras, sendAccountLink } from "./auth-extras.js";
 const fail = (statusCode: number, message: string) =>
   Object.assign(new Error(message), { statusCode });
 export async function buildServer(
@@ -24,11 +28,22 @@ export async function buildServer(
   },
 ) {
   const app = Fastify({
-    logger: options.logger ?? false,
+    logger: options.logger
+      ? {
+          serializers: {
+            req: (r) => ({ method: r.method, url: r.url?.split("?")[0] }),
+          },
+        }
+      : false,
+    trustProxy: (_address, hop) => hop === 0,
     bodyLimit: 32768,
     requestTimeout: 15000,
   });
-  const bookProvider = options.provider ?? providers.openlibrary;
+  const providers: Record<string, CatalogProvider> = {
+    ...catalog,
+    ...(options.provider ? { book: options.provider } : {}),
+  };
+  const typeSchema = z.enum(["book", "movie", "tv", "game"]).default("book");
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
   app.addHook("onRequest", async (req, reply) => {
@@ -103,6 +118,10 @@ export async function buildServer(
           throw fail(409, "Unable to create this account. Try signing in.");
         throw e;
       }
+      if (process.env.REQUIRE_EMAIL_CONFIRMATION === "true") {
+        await sendAccountLink(pool, id, body.email, "verify", options.origin);
+        return { message: "Check your email to confirm your account." };
+      }
       reply.setCookie("marqd_session", await session(id), cookieOptions);
       return { user: { id, email: body.email } };
     },
@@ -114,7 +133,7 @@ export async function buildServer(
     async (req, reply) => {
       const body = credentialsSchema.parse(req.body);
       const found = await pool.query(
-        "select id,email,password_hash from accounts where email=$1",
+        "select id,email,password_hash,verified from accounts where email=$1",
         [body.email],
       );
       const account = found.rows[0];
@@ -124,6 +143,11 @@ export async function buildServer(
       );
       if (!account || !valid)
         throw fail(401, "Email or password is incorrect.");
+      if (
+        process.env.REQUIRE_EMAIL_CONFIRMATION === "true" &&
+        !account.verified
+      )
+        throw fail(403, "Confirm your email before signing in.");
       if (req.cookies.marqd_session)
         await pool.query("delete from sessions where token_hash=$1", [
           tokenHash(req.cookies.marqd_session),
@@ -146,30 +170,48 @@ export async function buildServer(
   });
   app.get(
     "/api/search",
-    { config: { rateLimit: { max: 20, timeWindow: "1 minute" } } },
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
     async (req) => {
       await user(req);
-      const { q } = z
-        .object({ q: z.string().trim().min(2).max(150) })
+      const { q, type, creator } = z
+        .object({
+          q: z.string().trim().min(2).max(150),
+          type: typeSchema,
+          creator: z.string().optional(),
+        })
         .parse(req.query);
-      return bookProvider.search(q);
+      const p = providers[type];
+      return rank(
+        creator && "byCreator" in p && p.byCreator
+          ? await p.byCreator(q)
+          : await p.search(q),
+        q,
+      );
     },
   );
   app.get("/api/media", async (req) => {
-    await user(req);
-    const { id } = z.object({ id: z.string().max(80) }).parse(req.query);
-    return bookProvider.get(id);
+    const owner = await user(req);
+    const { id, type, source } = z
+      .object({
+        id: z.string().max(80),
+        type: typeSchema,
+        source: z.string().optional(),
+      })
+      .parse(req.query);
+    const media = await (options.provider
+      ? providers[type].get(id)
+      : getMedia(type, id, source));
+    await pool.query(
+      "update library set media=$1 where user_id=$2 and media_type=$3 and source=$4 and external_id=$5",
+      [media, owner.id, type, media.source, id],
+    );
+    return media;
   });
-  const row = (r: Record<string, unknown>) => ({
-    ...(r.media as object),
-    id: r.id,
-    version: r.version,
-    tracking: r.tracking,
-  });
+  const row = libraryRow;
   app.get("/api/library", async (req) => {
     const owner = await user(req);
     const result = await pool.query(
-      "select id,media,tracking,version from library where user_id=$1 order by created_at desc",
+      "select * from library where user_id=$1 order by created_at desc",
       [owner.id],
     );
     return result.rows.map(row);
@@ -178,15 +220,24 @@ export async function buildServer(
     const owner = await user(req);
     const body = z
       .object({
-        source: z.literal("openlibrary"),
-        externalId: z.string().regex(/^\/works\/OL\d+W$/),
+        source: z.string(),
+        type: typeSchema,
+        externalId: z.string().min(1).max(80),
         status: z.enum(["backlog", "in_progress", "completed", "abandoned"]),
       })
       .parse(req.body);
-    const media = await bookProvider.get(body.externalId);
+    if (
+      body.source !== mediaConfig[body.type].source &&
+      !(body.type === "book" && body.source === "googlebooks")
+    )
+      throw fail(400, "Source does not match media type");
+    const media = options.provider
+      ? await providers[body.type].get(body.externalId)
+      : await getMedia(body.type, body.externalId, body.source);
     const total =
-      typeof media.metadata.pages === "number" && media.metadata.pages > 0
-        ? Math.round(media.metadata.pages)
+      typeof media.metadata[mediaConfig[media.type].totalKey] === "number" &&
+      Number(media.metadata[mediaConfig[media.type].totalKey]) > 0
+        ? Math.round(Number(media.metadata[mediaConfig[media.type].totalKey]))
         : null;
     const tracking = {
       status: body.status,
@@ -195,9 +246,13 @@ export async function buildServer(
       current: body.status === "completed" && total ? total : 0,
       total,
       notes: "",
+      finishedAt:
+        body.status === "completed"
+          ? new Date().toISOString().slice(0, 10)
+          : null,
     };
     const result = await pool.query(
-      "insert into library(id,user_id,source,external_id,media_type,media,tracking) values($1,$2,$3,$4,$5,$6,$7) on conflict(user_id,source,external_id) do update set external_id=excluded.external_id returning id,media,tracking,version",
+      "insert into library(id,user_id,source,external_id,media_type,media,tracking) values($1,$2,$3,$4,$5,$6,$7) on conflict(user_id,media_type,source,external_id) do update set external_id=excluded.external_id returning *",
       [
         randomUUID(),
         owner.id,
@@ -221,7 +276,7 @@ export async function buildServer(
       })
       .parse(req.body);
     const result = await pool.query(
-      "update library set tracking=$1,version=version+1,updated_at=now() where id=$2 and user_id=$3 and version=$4 returning id,media,tracking,version",
+      "update library set tracking=$1,version=version+1,updated_at=now() where id=$2 and user_id=$3 and version=$4 returning *",
       [body.tracking, id, owner.id, body.version],
     );
     if (!result.rows[0]) {
@@ -238,5 +293,7 @@ export async function buildServer(
     }
     return row(result.rows[0]);
   });
+  await features(app, pool, user, providers);
+  await authExtras(app, pool, user, session, cookieOptions, options);
   return app;
 }

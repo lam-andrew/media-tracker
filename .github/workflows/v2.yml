@@ -27,6 +27,8 @@ jobs:
           node-version: "22"
       - run: npm ci
       - run: npm run v2:install
+      - run: npm audit --prefix apps/api --omit=dev --audit-level=high
+      - run: npm audit --prefix apps/web --omit=dev --audit-level=high
       - run: npm run v2:lint
       - run: npm run v2:typecheck
       - run: npm run v2:test

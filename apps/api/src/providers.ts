@@ -77,6 +77,7 @@ export const books: Provider = {
       title: string;
       covers?: number[];
       description?: string | { value: string };
+      subjects?: string[];
     }>(`${id}.json`);
     let cached: Media | undefined;
     for (const hit of cache.values()) {
@@ -86,6 +87,10 @@ export const books: Provider = {
     const value = {
       ...(cached ??
         mapBook({ key: id, title: data.title, cover_i: data.covers?.[0] })),
+      metadata: {
+        ...(cached?.metadata ?? {}),
+        genres: (data.subjects ?? []).slice(0, 12),
+      },
       description:
         typeof data.description === "string"
           ? data.description

@@ -4,6 +4,7 @@ import { Moon, Sun, Search, Plus, LogOut, ArrowUpRight } from "lucide-react";
 import { api, ApiError } from "./api";
 import {
   BRAND,
+  mediaConfig,
   mediaKey,
   type User,
   type Media,
@@ -15,15 +16,66 @@ import { Room } from "./components/Room";
 import { Gallery } from "./components/Gallery";
 import { Detail } from "./components/Detail";
 import { Cover } from "./components/Cover";
+import { Insights } from "./components/Insights";
+import { Discover } from "./components/Discover";
+import { Import } from "./components/Import";
+import { Settings, palettes } from "./components/Settings";
+const views = [
+  "Room",
+  "Gallery",
+  "Favorites",
+  "Journal",
+  "Discover",
+  "Search",
+  "Stats",
+  "Import",
+  "Settings",
+];
+const initialView = () => {
+  const name = decodeURIComponent(window.location.pathname.slice(1));
+  return views.find((v) => v.toLowerCase() === name) || "Room";
+};
 export default function App() {
   const qc = useQueryClient();
-  const [view, setView] = useState("Room"),
-    [query, setQuery] = useState(""),
+  const [routeRevision, setRouteRevision] = useState(0);
+  const recoveryLink = /^#(reset|verify)=/.test(window.location.hash);
+  const [view, setView] = useState(initialView),
+    [query, setQuery] = useState(
+      new URLSearchParams(window.location.search).get("q") ?? "",
+    ),
     [searchTerm, setSearchTerm] = useState(""),
-    [dusk, setDusk] = useState(false),
+    [dusk, setDusk] = useState(localStorage.getItem("marqd-dusk") === "true"),
     [selected, setSelected] = useState<Media | null>(null),
     [error, setError] = useState(""),
     [toast, setToast] = useState("");
+  const [mediaType, setMediaType] = useState("book"),
+    [filterType, setFilterType] = useState("all"),
+    [status, setStatus] = useState("all"),
+    [sort, setSort] = useState("added"),
+    [creator, setCreator] = useState(false),
+    [limit, setLimit] = useState(48),
+    [palette, setPalette] = useState(
+      localStorage.getItem("marqd-palette") || "Terracotta",
+    );
+  useEffect(() => {
+    localStorage.setItem("marqd-dusk", String(dusk));
+    localStorage.setItem("marqd-palette", palette);
+  }, [dusk, palette]);
+  useEffect(() => {
+    const pop = () => {
+      setView(initialView());
+      setSelected(null);
+      setRouteRevision((n) => n + 1);
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
+  useEffect(() => setLimit(48), [query, status, sort, filterType, view]);
+  const config = useQuery({
+    queryKey: ["config"],
+    queryFn: () => api<{ providers: Record<string, boolean> }>("/config"),
+    staleTime: 300000,
+  });
   const session = useQuery({
     queryKey: ["session"],
     queryFn: () => api<{ user: User | null }>("/session"),
@@ -49,9 +101,12 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
   const results = useQuery({
-    queryKey: ["search", searchTerm],
+    queryKey: ["search", mediaType, creator, searchTerm],
     queryFn: ({ signal }) =>
-      api<Media[]>(`/search?q=${encodeURIComponent(searchTerm)}`, { signal }),
+      api<Media[]>(
+        `/search?type=${mediaType}&q=${encodeURIComponent(searchTerm)}${creator ? "&creator=1" : ""}`,
+        { signal },
+      ),
     enabled: !!user && view === "Search" && searchTerm.length >= 2,
     staleTime: 300000,
     retry: false,
@@ -62,6 +117,7 @@ export default function App() {
         method: "POST",
         body: JSON.stringify({
           source: m.source,
+          type: m.type,
           externalId: m.externalId,
           status,
         }),
@@ -71,7 +127,7 @@ export default function App() {
         item,
         ...(old ?? []).filter((i) => i.id !== item.id),
       ]);
-      setSelected(null);
+      closeDetail();
       setToast("A new story in your collection.");
     },
     onError: (e) => setError(e.message),
@@ -107,27 +163,88 @@ export default function App() {
       qc.setQueryData<LibraryItem[]>(key, (old) =>
         old?.map((m) => (m.id === item.id ? item : m)),
       );
-      setSelected(null);
+      closeDetail();
       setToast("Your story, updated.");
     },
   });
-  const filtered = items.filter((m) =>
-    m.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const filtered = items
+    .filter(
+      (m) =>
+        (filterType === "all" || m.type === filterType) &&
+        (status === "all" || m.tracking.status === status) &&
+        (view !== "Favorites" || m.tracking.favorite) &&
+        (m.title + " " + m.creators.join(" "))
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    )
+    .sort((a, b) =>
+      sort === "title"
+        ? a.title.localeCompare(b.title)
+        : sort === "rating"
+          ? (b.tracking.rating ?? 0) - (a.tracking.rating ?? 0)
+          : sort === "year"
+            ? Number(b.metadata.year ?? 0) - Number(a.metadata.year ?? 0)
+            : 0,
+    );
+  function resetSession() {
+    setSelected(null);
+    qc.clear();
+    qc.setQueryData(["session"], { user: null });
+    navigate("Room");
+  }
+  function closeDetail() {
+    setSelected(null);
+    const u = new URL(window.location.href);
+    u.searchParams.delete("item");
+    window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+  }
   function open(m: Media) {
     setError("");
     setSelected(m);
+    if ("id" in m) {
+      const u = new URL(window.location.href);
+      u.searchParams.set("item", String(m.id));
+      window.history.pushState({}, "", u.pathname + u.search);
+    }
   }
   function navigate(n: string) {
     setView(n);
+    window.history.pushState(
+      {},
+      "",
+      n === "Room" ? "/" : "/" + n.toLowerCase(),
+    );
+    setCreator(false);
     setQuery("");
     setSearchTerm("");
   }
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("item");
+    if (id && library.data && !selected) {
+      const item = library.data.find((i) => i.id === id);
+      if (item) setSelected(item);
+    }
+  }, [library.data, routeRevision]);
   const owned = selected
     ? items.find((i) => mediaKey(i) === mediaKey(selected))
     : undefined;
   return (
-    <main className={dusk ? "world dusk" : "world"}>
+    <main
+      className={dusk ? "world dusk" : "world"}
+      style={
+        !dusk
+          ? ({
+              "--accent": (palettes[palette] ?? palettes.Terracotta).accent,
+              "--paper": (palettes[palette] ?? palettes.Terracotta).paper,
+              "--panel": (palettes[palette] ?? palettes.Terracotta).panel,
+              "--ink": (palettes[palette] ?? palettes.Terracotta).ink,
+            } as React.CSSProperties)
+          : undefined
+      }
+    >
+      <a className="skip-link" href="#content">
+        Skip to content
+      </a>
       <div className="study-bar">
         <span>V2 DEVELOPMENT · SEPARATE LIBRARY</span>
         <span>THE READING ROOM</span>
@@ -139,7 +256,7 @@ export default function App() {
         </button>
         {user && (
           <nav aria-label="Main navigation">
-            {["Room", "Gallery", "Journal", "Search"].map((n) => (
+            {views.map((n) => (
               <button
                 key={n}
                 className={view === n ? "chosen" : ""}
@@ -151,6 +268,25 @@ export default function App() {
           </nav>
         )}
         <div className="header-tools">
+          {user && (
+            <details className="profile-menu">
+              <summary aria-label="Profile menu">
+                {user.email.split("@")[0]}
+              </summary>
+              <div className="glass">
+                <p>{user.email}</p>
+                <button onClick={() => navigate("Settings")}>
+                  Profile & settings
+                </button>
+                <button onClick={() => navigate("Import")}>
+                  Import library
+                </button>
+                <a href="/api/export" download>
+                  Export library
+                </a>
+              </div>
+            </details>
+          )}
           <button
             className="round"
             aria-label={dusk ? "Switch to daylight" : "Switch to evening"}
@@ -200,7 +336,7 @@ export default function App() {
         </h1>
         <p>
           {view === "Search"
-            ? "Search books from Open Library. Your next chapter starts here."
+            ? "Books, movies, shows, and games. Your next story starts here."
             : "For the stories you’re in. And the ones you’ll never quite leave."}
         </p>
       </section>
@@ -208,7 +344,8 @@ export default function App() {
         <p className="loading" role="status">
           Opening your room…
         </p>
-      ) : !user ? (
+      ) : !user || recoveryLink ? (
+        recoveryLink ||
         session.data?.user === null ||
         (session.error instanceof ApiError && session.error.status === 401) ? (
           <Auth onSuccess={(u) => qc.setQueryData(["session"], { user: u })} />
@@ -222,18 +359,20 @@ export default function App() {
         )
       ) : (
         <>
-          {view !== "Journal" && (
+          {["Room", "Gallery", "Favorites", "Search"].includes(view) && (
             <div className="toolbar glass">
               <span className="eyebrow toolbar-label">
                 {view === "Search"
-                  ? "BOOK DISCOVERY"
+                  ? "DISCOVER STORIES"
                   : `${items.length} STORIES`}
               </span>
               <label className="search">
                 <Search size={15} />
                 <input
                   aria-label={
-                    view === "Search" ? "Search books" : "Filter library"
+                    view === "Search"
+                      ? `Search ${mediaConfig[mediaType].label.toLowerCase()}`
+                      : "Filter library"
                   }
                   value={query}
                   maxLength={150}
@@ -251,12 +390,98 @@ export default function App() {
               </button>
             </div>
           )}
+          <div id="content" tabIndex={-1} />
+          {view === "Search" && (
+            <div className="filters">
+              <label>
+                Media type
+                <select
+                  value={mediaType}
+                  onChange={(e) => {
+                    setMediaType(e.target.value);
+                    setCreator(false);
+                  }}
+                >
+                  {Object.entries(mediaConfig).map(([t, c]) => (
+                    <option key={t} value={t}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={creator}
+                  onChange={(e) => setCreator(e.target.checked)}
+                />{" "}
+                Search by creator
+              </label>
+              {config.data?.providers?.[mediaType] === false && (
+                <p role="status">
+                  This catalog needs an API key in the server configuration.
+                </p>
+              )}
+            </div>
+          )}
+          {["Gallery", "Favorites", "Room"].includes(view) && (
+            <div className="filters">
+              <label>
+                Type
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                >
+                  <option value="all">All media</option>
+                  {Object.entries(mediaConfig).map(([t, c]) => (
+                    <option value={t} key={t}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="all">Any status</option>
+                  <option value="backlog">Planned</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="abandoned">Stopped</option>
+                </select>
+              </label>
+              <label>
+                Sort
+                <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                  <option value="added">Recently added</option>
+                  <option value="title">Title</option>
+                  <option value="rating">Rating</option>
+                  <option value="year">Release year</option>
+                </select>
+              </label>
+            </div>
+          )}
           {error && !selected && (
             <p role="alert" className="error loading">
               {error}
             </p>
           )}
-          {library.isError ? (
+          {view === "Settings" ? (
+            <Settings
+              palette={palette}
+              setPalette={setPalette}
+              onDeleted={resetSession}
+            />
+          ) : view === "Import" ? (
+            <Import />
+          ) : view === "Stats" ? (
+            <Insights items={items} />
+          ) : view === "Discover" ? (
+            <Discover items={items} open={open} />
+          ) : library.isError ? (
             <div className="loading">
               <p role="alert">We couldn’t load your library.</p>
               <button onClick={() => library.refetch()}>Retry</button>
@@ -270,7 +495,7 @@ export default function App() {
                     ? "Finding your next story…"
                     : results.isError
                       ? (results.error as Error).message
-                      : `${results.data?.length ?? 0} books found`}
+                      : `${results.data?.length ?? 0} results found`}
               </div>
               {query.trim() === searchTerm && searchTerm.length >= 2 && (
                 <Gallery items={results.data ?? []} open={open} owned={items} />
@@ -285,21 +510,35 @@ export default function App() {
               open={open}
               onAdd={() => navigate("Search")}
             />
-          ) : view === "Gallery" ? (
+          ) : ["Gallery", "Favorites"].includes(view) ? (
             filtered.length ? (
-              <Gallery items={filtered} open={open} owned={items} />
+              <>
+                <Gallery
+                  items={filtered.slice(0, limit)}
+                  open={open}
+                  owned={items}
+                />
+                {filtered.length > limit && (
+                  <button
+                    className="primary load-more"
+                    onClick={() => setLimit(limit + 48)}
+                  >
+                    Show more ({filtered.length - limit} remaining)
+                  </button>
+                )}
+              </>
             ) : (
               <div className="loading">
                 No stories here yet.{" "}
                 <button className="primary" onClick={() => navigate("Search")}>
-                  Find a book
+                  Find a story
                 </button>
               </div>
             )
           ) : (
             <section className="journal">
               {items.length === 0 ? (
-                <p>Your journal begins with your first book.</p>
+                <p>Your journal begins with your first story.</p>
               ) : (
                 items.map((m, i) => (
                   <button
@@ -336,7 +575,7 @@ export default function App() {
           <br />A reflection of you.
         </p>
         <span>
-          V2 · BOOKS FIRST
+          V2 · ALL YOUR STORIES
           <br />
           Your original library is unchanged.
         </span>
@@ -346,7 +585,31 @@ export default function App() {
           key={mediaKey(selected)}
           media={selected}
           item={owned}
-          close={() => setSelected(null)}
+          close={() => {
+            setSelected(null);
+            const u = new URL(window.location.href);
+            u.searchParams.delete("item");
+            window.history.replaceState({}, "", u.pathname + u.search);
+          }}
+          byCreator={(name) => {
+            setSelected(null);
+            navigate("Search");
+            setMediaType(selected.type);
+            setCreator(true);
+            setQuery(name);
+          }}
+          remove={async (item) => {
+            try {
+              await api("/library/" + item.id, { method: "DELETE" });
+              qc.setQueryData<LibraryItem[]>(key, (old) =>
+                old?.filter((m) => m.id !== item.id),
+              );
+              setSelected(null);
+              setToast("Removed from your collection.");
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
           busy={save.isPending || add.isPending}
           error={error}
           add={async (m, status) => {

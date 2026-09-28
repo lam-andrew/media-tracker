@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { migrate } from "./migrate.js";
 import { Pool } from "pg";
 import { buildServer } from "./server.js";
 import { hashPassword, verifyPassword } from "./auth.js";
@@ -45,9 +45,7 @@ test(
   { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-    await pool.query(
-      await readFile("infra/migrations/001-initial.sql", "utf8"),
-    );
+    await migrate(pool);
     const book = mapBook({
       key: "/works/OL1W",
       title: "Integration fixture",

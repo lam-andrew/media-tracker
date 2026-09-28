@@ -15,6 +15,7 @@ services:
       retries: 20
     restart: unless-stopped
   api:
+    init: true
     build:
       context: ..
       dockerfile: infra/api.Dockerfile
@@ -23,6 +24,18 @@ services:
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3200}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN:-}
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
+      RAWG_API_KEY: ${RAWG_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      REQUIRE_EMAIL_CONFIRMATION: ${REQUIRE_EMAIL_CONFIRMATION:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       PORT: 3201
       HOST: 0.0.0.0
     depends_on:
@@ -41,11 +54,16 @@ services:
       retries: 10
     restart: unless-stopped
   web:
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/healthz]
+      interval: 15s
+      timeout: 3s
+      retries: 5
     build:
       context: ..
       dockerfile: infra/web.Dockerfile
     ports:
-      - "127.0.0.1:3200:8080"
+      - "${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-3200}:8080"
     depends_on:
       api:
         condition: service_healthy

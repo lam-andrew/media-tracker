@@ -6,3 +6,7 @@
 .next
 .claude
 docs/design-studies
+
+infra/backups
+**/*.dump
+**/.env.*

@@ -49,3 +49,6 @@ apps/*/dist/
 apps/*/node_modules/
 infra/.env
 packages/*/node_modules/
+
+infra/backups/
+*.dump

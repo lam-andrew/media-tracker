@@ -1,3 +1,5 @@
+> **V2:** [Feature inventory](docs/V2-PARITY.md) · [Portable container handoff](docs/V2-CONTAINERS.md). The v2 runtime does not depend on Vercel or Supabase.
+
 # Marqd
 
 > **v2 development branch:** The current source tree is the inherited v1 app.

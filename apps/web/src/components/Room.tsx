@@ -61,7 +61,7 @@ export function Room({
                 {visible.map((m, i) => (
                   <button
                     key={m.id}
-                    className={`volume book ${current.id === m.id ? "featured" : ""}`}
+                    className={`volume ${m.type} ${current.id === m.id ? "featured" : ""}`}
                     aria-label={`Open ${m.title}`}
                     onMouseEnter={() => setActive(i)}
                     onFocus={() => setActive(i)}
@@ -129,8 +129,12 @@ export function Room({
               onClick={() => open(current)}
             >
               <span>
-                {progressPercent(current.tracking)}
-                <small>%</small>
+                {current.type === "tv"
+                  ? `S${current.tracking.season ?? 1}`
+                  : progressPercent(current.tracking)}
+                <small>
+                  {current.type === "tv" ? `E${current.tracking.current}` : "%"}
+                </small>
               </span>
             </button>
             <button
