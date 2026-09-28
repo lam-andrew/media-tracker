@@ -22,7 +22,6 @@ export function Room({
     <section className="room" aria-label="Interactive library">
       <div className="window-light" />
       <div className="wall-grain" />
-      <div className="wall-lines" />
       <div className="room-label">
         <span className="dot" />
         {dusk ? "EVENING, AT YOUR PACE" : "A QUIET AFTERNOON"}

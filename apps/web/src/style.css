@@ -265,7 +265,6 @@ h1 em {
   border-radius: 99px;
 }
 .room {
-  --room-inset: 35px;
   --note-width: 160px;
   --room-gap: 24px;
   position: relative;
@@ -306,18 +305,6 @@ h1 em {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.15' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.15;
   pointer-events: none;
-  z-index: -1;
-}
-.wall-lines {
-  position: absolute;
-  /* Keep the wall seam in the gutter, clear of the translucent note. */
-  right: calc(var(--room-inset) + var(--note-width) + var(--room-gap) / 2);
-  top: 0;
-  height: 100%;
-  width: 22%;
-  border-left: 1px solid #6f5a4020;
-  border-right: 1px solid #fff3;
-  transform: skewY(-20deg);
   z-index: -1;
 }
 .room-label {
@@ -1118,9 +1105,6 @@ dialog[open] {
   }
 }
 @media (min-width: 1600px) {
-  .room {
-    --room-inset: 60px;
-  }
   .world {
     max-width: 1700px;
     margin: auto;
