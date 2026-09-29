@@ -38,3 +38,24 @@ jobs:
       - run: npm run test:ui
       - run: npm run build
       - run: docker build -f infra/api.Dockerfile . && docker build -f infra/web.Dockerfile .
+      - name: Deployment controller tests
+        run: python3 -m unittest discover -s infra/deploy -p 'test_*.py' -v
+      - name: Container smoke test (isolated CI database)
+        env:
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+        run: |
+          docker compose -p marqd-ci -f infra/compose.yaml up --build -d --wait --wait-timeout 180
+          curl --fail --retry 5 --retry-delay 2 http://127.0.0.1:3200/api/health
+          curl --fail http://127.0.0.1:3200/healthz
+      - name: Remove isolated CI containers
+        if: always()
+        env:
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+        run: docker compose -p marqd-ci -f infra/compose.yaml down -v
+  publish:
+    needs: integration
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/deploy.yml

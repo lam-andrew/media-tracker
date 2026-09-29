@@ -41,3 +41,23 @@ updates and failure recovery. Provider requests do not gate navigation or saved-
 
 Only the web port is published by default. The operator supplies TLS/reverse proxy configuration,
 backups, and integration credentials. See [container operations](CONTAINERS.md).
+
+## Deployment boundary
+
+```mermaid
+flowchart LR
+  main[Main branch] --> ci[GitHub-hosted CI checks]
+  ci --> images[Private GHCR API + web digests]
+  images --> release[Single release manifest]
+  release -->|Outbound pull only| controller[Reviewed controller in apps-01]
+  controller --> gate{Migration set unchanged?}
+  gate -->|No| review[Operator review]
+  gate -->|Yes| backup[Stop app writes + local DB dump]
+  backup --> update[Replace API and web]
+  update --> health[Web + database health checks]
+  health --> result[Record release / recover previous images]
+```
+
+Runtime secrets and registry read credentials stay on the host; the controller and
+Compose network/volume configuration are not self-updated by application releases.
+See [deployment operations](HOMELAB-DEPLOYMENT.md) and ADR 0019.
