@@ -1,0 +1,20 @@
+[Unit]
+Description=Deploy a tested Marqd release
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/marqd-deploy/enabled
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/marqd-deploy/deploy.py
+TimeoutStartSec=20min
+UMask=0077
+Environment=DOCKER_CONFIG=/etc/marqd-deploy/docker
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/marqd-deploy /etc/marqd-deploy/docker
+# Docker socket access remains effectively root-level; this is not a sandbox
+# for untrusted code. No GitHub runner or arbitrary workflow runs on this host.

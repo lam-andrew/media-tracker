@@ -1,10 +1,78 @@
-name: Container deployment guidance
+name: Publish homelab containers
 on:
-  workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
+  packages: write
+concurrency:
+  group: marqd-homelab-publish
+  cancel-in-progress: false
 jobs:
-  guidance:
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploy main with infra/compose.yaml. See docs/CONTAINERS.md. Host deployment is operator-managed."
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Refuse publication to existing public packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 infra/deploy/check_privacy.py
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image namespace
+        id: names
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "prefix=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: api
+        with:
+          context: .
+          file: infra/api.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.names.outputs.prefix }}-api:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        id: web
+        with:
+          context: .
+          file: infra/web.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.names.outputs.prefix }}-web:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+      - name: Assemble immutable release manifest
+        env:
+          IMAGE_PREFIX: ${{ steps.names.outputs.prefix }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          mkdir -p release-bundle
+          python3 infra/deploy/release.py > release-bundle/release.json
+          printf 'FROM scratch\nCOPY release.json /release.json\n' > release-bundle/Dockerfile
+      - name: Do not promote an older main build over a newer commit
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$latest" = "$GITHUB_SHA" ]; then echo 'promote=true' >> "$GITHUB_OUTPUT"; fi
+      # New GHCR packages default to private. Never change visibility automatically.
+      # Both immutable image digests are published before this single channel moves.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        if: steps.current.outputs.promote == 'true'
+        with:
+          context: release-bundle
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.names.outputs.prefix }}-release:${{ github.sha }}
+            ${{ steps.names.outputs.prefix }}-release:homelab
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
