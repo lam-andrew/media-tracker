@@ -1,3 +1,5 @@
+> Historical Next.js MVP specification. The current application is documented in [README](../README.md) and [architecture](architecture.md).
+
 # Marqd — MVP Build Spec (Implementation Handoff)
 
 *Companion to `PLAN.md` (strategy). This doc is the **buildable spec** — hand it to an implementing

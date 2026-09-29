@@ -43,3 +43,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# v2 build artifacts and local configuration
+apps/*/dist/
+apps/*/node_modules/
+infra/.env
+packages/*/node_modules/
+
+infra/backups/
+*.dump
