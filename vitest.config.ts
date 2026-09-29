@@ -1,25 +1,25 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
-
+import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./vitest.setup.ts"],
-    // Agent worktrees are separate checkouts that run their own tests.
-    exclude: [
-      "apps/**",
-      "packages/**",
-      "**/node_modules/**",
-      "**/.next/**",
-      ".claude/worktrees/**",
-    ],
-  },
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
-      "@": fileURLToPath(new URL("./", import.meta.url)),
+      "lucide-react": fileURLToPath(
+        new URL(
+          "./node_modules/lucide-react/dist/cjs/lucide-react.js",
+          import.meta.url,
+        ),
+      ),
     },
+  },
+  test: {
+    server: {
+      deps: { inline: [/@tanstack\/react-query/, /lucide-react/, /@radix-ui/] },
+    },
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    include: ["apps/web/src/**/*.test.tsx"],
   },
 });

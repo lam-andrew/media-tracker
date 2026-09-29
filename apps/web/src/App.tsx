@@ -242,7 +242,7 @@ export default function App() {
         Skip to content
       </a>
       <div className="study-bar">
-        <span>V2 DEVELOPMENT · SEPARATE LIBRARY</span>
+        <span>ALL YOUR STORIES, IN ONE PLACE</span>
         <span>THE READING ROOM</span>
       </div>
       <header>
@@ -656,9 +656,9 @@ export default function App() {
           <br />A reflection of you.
         </p>
         <span>
-          V2 · ALL YOUR STORIES
+          YOUR PERSONAL COLLECTION
           <br />
-          Your original library is unchanged.
+          Read. Watch. Play. Remember.
         </span>
       </footer>
       {selected && (

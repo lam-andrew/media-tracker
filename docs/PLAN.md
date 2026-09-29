@@ -1,5 +1,25 @@
 # Marqd — Product & Business Plan
 
+## Next main feature — Board games
+
+Priority confirmed 2026-09-28. Implement after promotion of the containerized app to main.
+Add a distinct board-game media type and label existing games as Video games. Initial scope:
+search/add, box art and metadata, ratings, favorites, notes, want-to-play/played state,
+ownership separate from play status, and play count/last-played date. Explore physical
+board-game boxes within the accepted shelf design.
+
+Preferred provider: [BoardGameGeek XML API2](https://boardgamegeek.com/wiki/page/BGG_XML_API2).
+Register the application and obtain an API token before integration acceptance. Personal
+access and commercial use have different terms; secure permission for monetization.
+Cache metadata and throttle provider requests so navigation stays responsive. Wikidata is a
+possible supplemental source; Board Game Atlas is closed. Keep the provider replaceable.
+
+This is the next planned feature, not implemented by the main-branch promotion.
+
+---
+
+The strategy below includes historical MVP plans; README.md and FEATURES.md describe the current app.
+
 *Owner: Andrew · Started: 2026-07-12 · Status: Planning · Name locked: 2026-07-13*
 
 > **Marqd** — *mark what you've experienced.* A universal personal media catalog. Name plays on
