@@ -16,4 +16,5 @@ COPY --from=build /app/apps/api/dist/apps/api/src apps/api/src
 COPY --from=build /app/apps/api/dist/packages/contracts/src packages/contracts/src
 COPY infra/migrations infra/migrations
 USER node
+HEALTHCHECK --interval=10s --timeout=3s --retries=10 CMD node -e "fetch('http://127.0.0.1:3201/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node","apps/api/src/index.js"]
