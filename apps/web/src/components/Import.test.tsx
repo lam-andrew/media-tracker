@@ -64,3 +64,45 @@ test("invalid backup explains failure without exposing an import action", async 
   ).not.toBeInTheDocument();
   expect(fetch).not.toHaveBeenCalled();
 });
+test("backup restores portable collections after the library batch", async () => {
+  const fetcher = vi.fn((_url: string, _init?: RequestInit) =>
+    Promise.resolve(new Response(JSON.stringify({ added: 0, skipped: 0 }))),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  mount();
+  const collections = [{ name: "Game night", items: [] }];
+  upload(
+    "backup.json",
+    JSON.stringify({ format: "marqd-v2", entries: [], collections }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Restore backup" }),
+  );
+  expect(await screen.findByText(/Done. Imported/)).toBeInTheDocument();
+  const writes = fetcher.mock.calls.map(([, init]) =>
+    JSON.parse(String(init?.body)),
+  );
+  expect(writes).toEqual([
+    { entries: [], goals: [] },
+    { entries: [], collections },
+  ]);
+});
+test("invalid collection backup clears staged entries before any write", async () => {
+  vi.stubGlobal("fetch", vi.fn());
+  mount();
+  upload(
+    "backup.json",
+    JSON.stringify({
+      format: "marqd-v2",
+      entries: [],
+      collections: [{ name: "", items: [] }],
+    }),
+  );
+  expect(await screen.findByRole("status")).not.toHaveTextContent(
+    "entries ready",
+  );
+  expect(
+    screen.queryByRole("button", { name: "Restore backup" }),
+  ).not.toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+});

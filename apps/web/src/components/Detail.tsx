@@ -127,6 +127,13 @@ export function Detail({
                     "episodes",
                     "metacritic",
                     "publishers",
+                    "minPlayers",
+                    "maxPlayers",
+                    "playingTime",
+                    "minAge",
+                    "mechanics",
+                    "categories",
+                    "expansion",
                   ].includes(k) && v != null,
               )
               .map(([k, v]) => (
@@ -135,6 +142,18 @@ export function Detail({
                 </span>
               ))}
           </div>
+          {media.source === "bgg" && (
+            <p className="catalog-credit">
+              Game data from{" "}
+              <a
+                href={`https://boardgamegeek.com/boardgame/${encodeURIComponent(media.externalId)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                BoardGameGeek
+              </a>
+            </p>
+          )}
           <RichText
             text={
               display.description ||
@@ -192,6 +211,66 @@ export function Detail({
                   )}
                 </Select>
               </label>
+              {media.type === "boardgame" && (
+                <fieldset className="boardgame-tracking">
+                  <legend>At your table</legend>
+                  <label className="favorite-check">
+                    <input
+                      type="checkbox"
+                      disabled={busy}
+                      checked={draft.owned ?? false}
+                      onChange={(e) => patch("owned", e.target.checked)}
+                    />{" "}
+                    I own this game
+                  </label>
+                  <div className="progress-fields">
+                    <label className="form-field">
+                      Times played
+                      <input
+                        type="number"
+                        min={0}
+                        max={10000000}
+                        disabled={busy}
+                        value={draft.playCount ?? 0}
+                        onChange={(e) =>
+                          patch("playCount", Number(e.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="form-field">
+                      Last played
+                      <input
+                        type="date"
+                        disabled={busy}
+                        value={draft.lastPlayedAt ?? ""}
+                        onChange={(e) =>
+                          patch("lastPlayedAt", e.target.value || null)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy || (draft.playCount ?? 0) >= 10000000}
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        playCount: (draft.playCount ?? 0) + 1,
+                        lastPlayedAt: new Date().toLocaleDateString("en-CA"),
+                        status:
+                          draft.status === "backlog"
+                            ? "completed"
+                            : draft.status,
+                      })
+                    }
+                  >
+                    Add a play
+                  </button>
+                  <small>
+                    Save changes to keep your play count and ownership.
+                  </small>
+                </fieldset>
+              )}
               {mediaConfig[media.type].unit && (
                 <div className="progress-fields">
                   <label className="form-field">

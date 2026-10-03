@@ -9,7 +9,11 @@ import {
   ArrowRight,
   CheckCircle2,
 } from "lucide-react";
-import { BRAND } from "../types";
+import {
+  BRAND,
+  portableCollectionSchema,
+  type PortableCollection,
+} from "../types";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
@@ -28,6 +32,7 @@ type Match = {
   error?: string;
 };
 export function Import() {
+  const [collections, setCollections] = useState<PortableCollection[]>([]);
   const qc = useQueryClient(),
     cancel = useRef(false),
     fileInput = useRef<HTMLInputElement>(null);
@@ -77,6 +82,7 @@ export function Import() {
     setEntries([]);
     setMatches([]);
     setGoals([]);
+    setCollections([]);
     cancel.current = false;
     try {
       const text = await file.text();
@@ -92,6 +98,16 @@ export function Import() {
         setSource("backup");
         setEntries(rows);
         setGoals(data.goals ?? []);
+        if (
+          data.collections &&
+          (!Array.isArray(data.collections) || data.collections.length > 100)
+        )
+          throw new Error("This backup has too many collections.");
+        setCollections(
+          (data.collections ?? []).map((c: unknown) =>
+            portableCollectionSchema.parse(c),
+          ),
+        );
         setMessage(
           `${rows.length} entries ready to import. Existing entries will be skipped.`,
         );
@@ -145,6 +161,9 @@ export function Import() {
       setPhase("review");
     } catch (e) {
       setPhase("choose");
+      setEntries([]);
+      setGoals([]);
+      setCollections([]);
       setMessage((e as Error).message);
     } finally {
       setBusy(false);
@@ -192,6 +211,13 @@ export function Import() {
         skipped += result.skipped;
         setMessage(`Imported ${added}; skipped ${skipped} existing entries…`);
       }
+      // Restore memberships after every library batch exists on the server.
+      if (collections.length)
+        await api("/import", {
+          method: "POST",
+          body: JSON.stringify({ entries: [], collections }),
+        });
+      await qc.invalidateQueries({ queryKey: ["collections"] });
       await qc.invalidateQueries({ queryKey: ["library"] });
       await qc.invalidateQueries({ queryKey: ["goals"] });
       setMessage(
@@ -201,6 +227,7 @@ export function Import() {
       setMatches([]);
       setEntries([]);
       setGoals([]);
+      setCollections([]);
     } catch (e) {
       setPhase("review");
       setMessage(
@@ -356,23 +383,33 @@ export function Import() {
           )}
         </div>
       )}
-      {(entries.length > 0 || matches.length > 0 || goals.length > 0) && (
+      {(entries.length > 0 ||
+        matches.length > 0 ||
+        goals.length > 0 ||
+        collections.length > 0) && (
         <div className="import-review">
           <div className="import-review-heading">
             <div>
               <h2>Review your collection</h2>
               <p>
                 {selectedCount} selected
-                {goals.length ? ` · ${goals.length} goals` : ""}. Skip any match
-                that doesn’t look right.
+                {goals.length ? ` · ${goals.length} goals` : ""}
+                {collections.length
+                  ? ` · ${collections.length} collections`
+                  : ""}
+                . Skip any match that doesn’t look right.
               </p>
             </div>
             <button
               className="primary"
-              disabled={busy || (!selectedCount && !goals.length)}
+              disabled={
+                busy || (!selectedCount && !goals.length && !collections.length)
+              }
               onClick={commit}
             >
-              Import {selectedCount} {selectedCount === 1 ? "entry" : "entries"}
+              {source === "backup"
+                ? "Restore backup"
+                : `Import ${selectedCount} ${selectedCount === 1 ? "entry" : "entries"}`}
               <ArrowRight size={16} />
             </button>
           </div>

@@ -73,7 +73,7 @@ export function Room({
                     style={
                       {
                         "--jacket": `var(--jacket-${i % 5})`,
-                        "--height": `${270 - (i % 3) * 12}px`,
+                        "--height": `${m.type === "boardgame" ? 220 : 270 - (i % 3) * 12}px`,
                       } as React.CSSProperties
                     }
                   >
@@ -127,11 +127,17 @@ export function Room({
               onClick={() => open(current)}
             >
               <span>
-                {current.type === "tv"
-                  ? `S${current.tracking.season ?? 1}`
-                  : progressPercent(current.tracking)}
+                {current.type === "boardgame"
+                  ? (current.tracking.playCount ?? 0)
+                  : current.type === "tv"
+                    ? `S${current.tracking.season ?? 1}`
+                    : progressPercent(current.tracking)}
                 <small>
-                  {current.type === "tv" ? `E${current.tracking.current}` : "%"}
+                  {current.type === "boardgame"
+                    ? "plays"
+                    : current.type === "tv"
+                      ? `E${current.tracking.current}`
+                      : "%"}
                 </small>
               </span>
             </button>

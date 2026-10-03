@@ -1,5 +1,6 @@
 import { z } from "zod";
 export const BRAND = { name: "Marqd" };
+export const mediaTypes = ["book", "movie", "tv", "game", "boardgame"] as const;
 export const credentialsSchema = z.object({
   email: z
     .email()
@@ -15,6 +16,9 @@ export const trackingSchema = z
     current: z.number().int().min(0).max(10000000),
     total: z.number().int().min(1).max(10000000).nullable(),
     notes: z.string().max(10000),
+    owned: z.boolean().optional(),
+    playCount: z.number().int().min(0).max(10000000).optional(),
+    lastPlayedAt: z.iso.date().nullable().optional(),
     startedAt: z.iso.date().nullable().optional(),
     season: z.number().int().min(0).max(10000).nullable().optional(),
     finishedAt: z.iso.date().nullable().optional(),
@@ -39,6 +43,7 @@ export interface LibraryItem extends Media {
   version: number;
   tracking: Tracking;
   createdAt?: string;
+  updatedAt?: string;
 }
 export interface User {
   id: string;
@@ -91,7 +96,7 @@ export const mediaConfig: Record<
     },
   },
   game: {
-    label: "Games",
+    label: "Video games",
     unit: "percent",
     source: "rawg",
     totalKey: "completion",
@@ -102,12 +107,24 @@ export const mediaConfig: Record<
       abandoned: "Dropped",
     },
   },
+  boardgame: {
+    label: "Board games",
+    unit: "",
+    source: "bgg",
+    totalKey: "",
+    statuses: {
+      backlog: "Want to play",
+      in_progress: "Playing regularly",
+      completed: "Played",
+      abandoned: "No longer playing",
+    },
+  },
 };
 export const mediaKey = (m: Media) => `${m.type}:${m.source}:${m.externalId}`;
 export const mediaSchema = z.object({
   source: z.string().min(1).max(80),
   externalId: z.string().min(1).max(150),
-  type: z.enum(["book", "movie", "tv", "game"]),
+  type: z.enum(mediaTypes),
   title: z.string().min(1).max(1000),
   creators: z.array(z.string().max(500)).max(100),
   image: z
@@ -129,3 +146,17 @@ export interface Goal {
 }
 export const progressPercent = (t: Tracking) =>
   t.total ? Math.min(100, Math.round((t.current / t.total) * 100)) : 0;
+
+export const portableCollectionSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  items: z
+    .array(
+      z.object({
+        type: z.enum(mediaTypes),
+        source: z.string().min(1).max(80),
+        externalId: z.string().min(1).max(150),
+      }),
+    )
+    .max(10000),
+});
+export type PortableCollection = z.infer<typeof portableCollectionSchema>;

@@ -53,7 +53,7 @@ it in the background. See [local development](docs/LOCAL.md).
 - [Features and deployment checks](docs/FEATURES.md)
 - [Architecture](docs/architecture.md) and [decisions](docs/adr/)
 - [Private homelab deployment pipeline](docs/HOMELAB-DEPLOYMENT.md)
-- [Product plan](docs/PLAN.md) — **board games are the next main feature**
+- [Product plan](docs/PLAN.md) — board games, Continue, and custom collections ([setup](docs/BOARD-GAMES.md))
 - [Contributing](CONTRIBUTING.md)
 
 The original build specification and rebuild plan remain historical references.

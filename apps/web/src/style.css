@@ -2686,3 +2686,61 @@ header nav button {
     flex-direction: column;
   }
 }
+
+/* Board-game boxes sit on the same shelf without changing the room geometry. */
+.volume.boardgame {
+  flex-basis: 55px;
+  width: 55px;
+  border-radius: 5px;
+}
+.volume.boardgame.featured {
+  flex-basis: 220px;
+  width: 220px;
+}
+.volume.boardgame .jacket {
+  border: 3px solid var(--jacket);
+  border-radius: 5px;
+  background: var(--jacket);
+}
+.volume.boardgame .jacket img,
+.boardgame-cover img {
+  object-fit: contain;
+}
+.volume.boardgame .page-edge {
+  background: var(--jacket);
+  width: 8px;
+}
+.volume.boardgame .crease {
+  background: linear-gradient(
+    90deg,
+    #0004,
+    transparent 8%,
+    transparent 92%,
+    #0002
+  );
+  box-shadow: inset 0 0 0 2px #ffffff15;
+}
+.boardgame-tracking {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  margin: 20px 0;
+  display: grid;
+  gap: 14px;
+}
+.boardgame-tracking legend {
+  padding: 0 8px;
+}
+.boardgame-tracking small {
+  color: var(--muted);
+}
+@media (max-width: 700px) {
+  .volume.boardgame {
+    flex-basis: 28px;
+    width: 28px;
+  }
+  .volume.boardgame.featured {
+    flex-basis: 145px;
+    width: 145px;
+  }
+}

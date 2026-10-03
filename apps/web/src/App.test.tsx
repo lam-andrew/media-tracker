@@ -176,9 +176,12 @@ test("media selector routes search requests to the selected catalog", async () =
   fireEvent.change(screen.getByRole("combobox", { name: "Media type" }), {
     target: { value: "game" },
   });
-  fireEvent.change(screen.getByRole("textbox", { name: "Search games" }), {
-    target: { value: "Hades" },
-  });
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Search video games" }),
+    {
+      target: { value: "Hades" },
+    },
+  );
   await waitFor(() =>
     expect(
       fetcher.mock.calls.some(
