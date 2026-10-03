@@ -1,3 +1,4 @@
+import { exportCollections, importCollections } from "./collections.js";
 import { chooseSeeds, diversify } from "./recommendations.js";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
@@ -11,6 +12,8 @@ import {
 } from "./catalog.js";
 import {
   entrySchema,
+  mediaTypes,
+  portableCollectionSchema,
   mediaKey,
   type Media,
   type LibraryItem,
@@ -23,6 +26,7 @@ export const libraryRow = (r: Record<string, unknown>): LibraryItem => ({
   version: Number(r.version),
   tracking: r.tracking as LibraryItem["tracking"],
   createdAt: new Date(r.created_at as string).toISOString(),
+  updatedAt: new Date(r.updated_at as string).toISOString(),
 });
 export async function features(
   app: FastifyInstance,
@@ -106,7 +110,7 @@ export async function features(
     const b = z
       .object({
         year: z.number().int().min(1900).max(2200),
-        type: z.enum(["all", "book", "movie", "tv", "game"]),
+        type: z.enum(["all", ...mediaTypes]),
         target: z.number().int().min(1).max(100000),
       })
       .parse(req.body);
@@ -154,13 +158,16 @@ export async function features(
           version: _v,
           tracking,
           createdAt,
+          updatedAt: _updatedAt,
           ...media
         } = libraryRow(r);
         void _id;
         void _v;
+        void _updatedAt;
         return { media, tracking, createdAt };
       }),
       goals,
+      collections: await exportCollections(pool, owner.id),
     };
   });
   app.post("/api/import", { bodyLimit: 2 * 1024 * 1024 }, async (req) => {
@@ -168,11 +175,12 @@ export async function features(
     const b = z
       .object({
         entries: z.array(entrySchema).max(200),
+        collections: z.array(portableCollectionSchema).max(100).optional(),
         goals: z
           .array(
             z.object({
               year: z.number().int().min(1900).max(2200),
-              type: z.enum(["all", "book", "movie", "tv", "game"]),
+              type: z.enum(["all", ...mediaTypes]),
               target: z.number().int().positive().max(100000),
             }),
           )
@@ -205,6 +213,7 @@ export async function features(
           "insert into goals(user_id,year,media_type,target) values($1,$2,$3,$4) on conflict do nothing",
           [owner.id, g.year, g.type, g.target],
         );
+      await importCollections(client, owner.id, b.collections ?? []);
       await client.query("commit");
     } catch (e) {
       await client.query("rollback");

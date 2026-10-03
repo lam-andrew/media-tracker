@@ -40,7 +40,9 @@ export function Gallery({
             key={mediaKey(m)}
             onClick={() => open(m)}
           >
-            <div className="gallery-cover">
+            <div
+              className={`gallery-cover ${m.type === "boardgame" ? "boardgame-cover" : ""}`}
+            >
               <Cover item={m} />
               <span className="gallery-open">
                 <ArrowUpRight size={22} />

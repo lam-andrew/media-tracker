@@ -1,6 +1,6 @@
 # Marqd — Product & Business Plan
 
-## Next main feature — Board games
+## Current feature work — Board games, Continue, and collections
 
 Priority confirmed 2026-09-28. Implement after promotion of the containerized app to main.
 Add a distinct board-game media type and label existing games as Video games. Initial scope:
@@ -14,7 +14,7 @@ access and commercial use have different terms; secure permission for monetizati
 Cache metadata and throttle provider requests so navigation stays responsive. Wikidata is a
 possible supplemental source; Board Game Atlas is closed. Keep the provider replaceable.
 
-This is the next planned feature, not implemented by the main-branch promotion.
+Implementation is on a feature branch; see BOARD-GAMES.md for provider activation and the supervised collection migration. Continue and custom collections are part of this increment. Live BGG acceptance requires the operator token.
 
 ---
 

@@ -9,10 +9,12 @@ import {
   trackingSchema,
   type User,
   mediaConfig,
+  mediaTypes,
 } from "../../../packages/contracts/src/index.js";
 import { hashPassword, verifyPassword, newToken, tokenHash } from "./auth.js";
 import { type Provider } from "./providers.js";
 import { catalog, rank, getMedia, type CatalogProvider } from "./catalog.js";
+import { collections } from "./collections.js";
 import { features, libraryRow } from "./features.js";
 import { authExtras, sendAccountLink } from "./auth-extras.js";
 const fail = (statusCode: number, message: string) =>
@@ -43,7 +45,7 @@ export async function buildServer(
     ...catalog,
     ...(options.provider ? { book: options.provider } : {}),
   };
-  const typeSchema = z.enum(["book", "movie", "tv", "game"]).default("book");
+  const typeSchema = z.enum(mediaTypes).default("book");
   await app.register(cookie);
   await app.register(rateLimit, { max: 120, timeWindow: "1 minute" });
   app.addHook("onRequest", async (req, reply) => {
@@ -293,6 +295,7 @@ export async function buildServer(
     }
     return row(result.rows[0]);
   });
+  await collections(app, pool, user);
   await features(app, pool, user, providers);
   await authExtras(app, pool, user, session, cookieOptions, options);
   return app;

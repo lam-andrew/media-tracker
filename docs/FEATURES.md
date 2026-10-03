@@ -24,6 +24,12 @@ Next.js application is preserved at Git tag `legacy-v1`. Code promotion does not
 - Loading/error states, retry controls, save rollback, version conflict protection, reduced motion,
   skip link, responsive controls and application error boundary.
 
+## Feature branch increment
+
+Board games, quick Continue updates, and private custom collections are being prepared.
+See [setup and migration](BOARD-GAMES.md). Live BGG search requires a token; collections
+requires a supervised additive migration before homelab deployment.
+
 ## Configuration and validation gates
 
 Code availability is not the same as an activated integration. TMDB/RAWG keys are configured

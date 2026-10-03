@@ -1,3 +1,4 @@
+import { boardGames } from "./boardgames.js";
 import { googleBooks } from "./google-books.js";
 import {
   movieProvider,
@@ -96,6 +97,7 @@ export const catalog: Record<string, CatalogProvider> = {
   movie: wrap(movieProvider),
   tv: wrap(tvProvider),
   game: wrap(rawgProvider),
+  boardgame: boardGames,
 };
 export function rank(items: Media[], query: string) {
   const seen = new Set<string>();
@@ -120,6 +122,7 @@ export const providerAvailability = () => ({
   movie: !!process.env.TMDB_ACCESS_TOKEN,
   tv: !!process.env.TMDB_ACCESS_TOKEN,
   game: !!process.env.RAWG_API_KEY,
+  boardgame: !!process.env.BGG_API_TOKEN,
 });
 
 export const getMedia = async (type: string, id: string, source?: string) =>

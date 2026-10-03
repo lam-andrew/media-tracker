@@ -1,3 +1,5 @@
+import { Continue } from "./components/Continue";
+import { Collections } from "./components/Collections";
 import { Select } from "./components/Select";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +28,7 @@ const views = [
   "Room",
   "Gallery",
   "Favorites",
+  "Collections",
   "Journal",
   "Discover",
   "Search",
@@ -258,7 +261,12 @@ export default function App() {
                 className={
                   (
                     n === "Library"
-                      ? ["Room", "Gallery", "Favorites"].includes(view)
+                      ? [
+                          "Room",
+                          "Gallery",
+                          "Favorites",
+                          "Collections",
+                        ].includes(view)
                       : n === "Discover"
                         ? ["Discover", "Search"].includes(view)
                         : ["Journal", "Stats"].includes(view)
@@ -347,6 +355,7 @@ export default function App() {
             (
               {
                 Gallery: "Your collection.",
+                Collections: "Stories that belong together.",
                 Favorites: "The ones you love.",
                 Journal: "Your story so far.",
                 Stats: "A little perspective.",
@@ -363,7 +372,7 @@ export default function App() {
         </h1>
         <p>
           {view === "Search"
-            ? "Books, movies, shows, and games. Your next story starts here."
+            ? "Books, movies, shows, video games, and board games. Find your next favorite."
             : "For the stories you’re in. And the ones you’ll never quite leave."}
         </p>
       </section>
@@ -409,7 +418,7 @@ export default function App() {
       ) : (
         <>
           <div id="content" tabIndex={-1} />
-          {["Room", "Gallery", "Favorites"].includes(view) && (
+          {["Room", "Gallery", "Favorites", "Collections"].includes(view) && (
             <div className="collection-heading">
               <div>
                 <h2>Your library</h2>
@@ -418,7 +427,7 @@ export default function App() {
                 </span>
               </div>
               <div className="workspace-tabs" aria-label="Library views">
-                {["Room", "Gallery", "Favorites"].map((n) => (
+                {["Room", "Gallery", "Favorites", "Collections"].map((n) => (
                   <button
                     key={n}
                     aria-pressed={view === n}
@@ -429,6 +438,16 @@ export default function App() {
                 ))}
               </div>
             </div>
+          )}
+          {view === "Room" && !library.isPending && !library.isError && (
+            <Continue
+              items={items}
+              open={open}
+              busy={save.isPending}
+              save={async (item, tracking) => {
+                await save.mutateAsync({ item, tracking });
+              }}
+            />
           )}
           <div className="collection-controls">
             {["Room", "Gallery", "Favorites", "Search"].includes(view) && (
@@ -481,14 +500,16 @@ export default function App() {
                     ))}
                   </Select>
                 </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={creator}
-                    onChange={(e) => setCreator(e.target.checked)}
-                  />{" "}
-                  Search by creator
-                </label>
+                {mediaType !== "boardgame" && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={creator}
+                      onChange={(e) => setCreator(e.target.checked)}
+                    />{" "}
+                    Search by creator
+                  </label>
+                )}
                 {config.data?.providers?.[mediaType] === false && (
                   <p role="status">
                     This catalog needs an API key in the server configuration.
@@ -556,6 +577,8 @@ export default function App() {
               setPalette={setPalette}
               onDeleted={resetSession}
             />
+          ) : view === "Collections" ? (
+            <Collections items={items} open={open} />
           ) : view === "Import" ? (
             <Import />
           ) : view === "Stats" ? (
